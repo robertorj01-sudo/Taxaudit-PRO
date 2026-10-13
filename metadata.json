@@ -1,0 +1,6 @@
+{
+  "name": "Escrituração Fiscal e Análise Tributária",
+  "description": "Sistema profissional de escrituração fiscal digital, motor de regras tributárias, auditoria explicável de documentos fiscais e integração ERP.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

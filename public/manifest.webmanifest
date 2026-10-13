@@ -1,0 +1,64 @@
+{
+  "id": "/",
+  "name": "GESTÃO FISCAL GEPAT.F - INDÚSTRIAS NUCLEARES DO BRASIL",
+  "short_name": "GEPAT.F",
+  "description": "Sistema de Gestão e Auditoria Fiscal da Gerência de Planejamento Tributário da INB",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#002B49",
+  "background_color": "#0f172a",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "categories": ["business", "finance", "productivity"],
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Relatório Mensal",
+      "short_name": "Relatórios",
+      "description": "Visualizar relatório mensal consolidado de NF-e",
+      "url": "/?tab=relatorios",
+      "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Auditoria de Notas",
+      "short_name": "Auditoria",
+      "description": "Auditar divergências e regras fiscais",
+      "url": "/?tab=auditoria",
+      "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Pasta de Rede R:\\",
+      "short_name": "Sincronizar",
+      "description": "Sincronizar XMLs da pasta corporativa da GEPAT.F",
+      "url": "/?action=sync",
+      "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192" }]
+    }
+  ]
+}
