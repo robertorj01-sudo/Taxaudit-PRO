@@ -501,14 +501,26 @@ export const ReceitaFederalValidatorModal: React.FC<ReceitaFederalValidatorModal
                   </div>
 
                   {resultadoAtual.cnaePrincipal && (
-                    <div className="p-2.5 border border-slate-300 rounded">
-                      <span className="text-[10px] text-slate-500 font-bold uppercase block">
-                        CÓDIGO E DESCRIÇÃO DA ATIVIDADE ECONÔMICA PRINCIPAL (CNAE)
-                      </span>
-                      <span className="font-mono font-bold text-slate-900">
-                        {resultadoAtual.cnaePrincipal.codigo}
-                      </span>{' '}
-                      — <span className="text-slate-700">{resultadoAtual.cnaePrincipal.descricao}</span>
+                    <div className="p-2.5 border border-slate-300 rounded flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-50/50">
+                      <div>
+                        <span className="text-[10px] text-slate-500 font-bold uppercase block">
+                          CÓDIGO E DESCRIÇÃO DA ATIVIDADE ECONÔMICA PRINCIPAL (CNAE)
+                        </span>
+                        <span className="font-mono font-bold text-slate-900">
+                          {resultadoAtual.cnaePrincipal.codigo}
+                        </span>{' '}
+                        — <span className="text-slate-700">{resultadoAtual.cnaePrincipal.descricao}</span>
+                      </div>
+                      <a
+                        href={`https://concla.ibge.gov.br/busca-online-cnae.html?view=subclasse&tipo=cnae&versao=10&subclasse=${resultadoAtual.cnaePrincipal.codigo.replace(/\D/g, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded text-[11px] font-bold transition flex items-center gap-1 shrink-0 self-start sm:self-auto"
+                        title="Consultar no Portal Oficial do CONCLA / IBGE"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        <span>Ver no CONCLA</span>
+                      </a>
                     </div>
                   )}
 

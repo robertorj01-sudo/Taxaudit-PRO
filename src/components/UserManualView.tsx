@@ -29,7 +29,9 @@ import {
   FileCheck2,
   Building2,
   Users,
-  KeyRound
+  KeyRound,
+  FolderTree,
+  Globe
 } from 'lucide-react';
 import { ActiveTab } from './Sidebar';
 
@@ -566,6 +568,57 @@ export const UserManualView: React.FC<UserManualViewProps> = ({
         ],
         atalhoTexto: 'Ver Licença Vitalícia'
       }
+    },
+    {
+      id: 'ncm_manual',
+      titulo: '14. Atualização Instantânea de NCM (Siscomex Classif)',
+      subtitulo: 'Sincronização em tempo real de NCMs com o Portal Único Siscomex da Receita Federal',
+      categoria: 'Tabelas & Classificação Fiscal',
+      icone: Globe,
+      telaAlvo: 'ncm',
+      perfis: ['TODOS', 'AUDITOR', 'CONTADOR'],
+      conteudo: {
+        objetivo: 'Consultar e sincronizar instantaneamente todas as Nomenclaturas Comuns do Mercosul (NCM) dos itens das notas com o Portal Único Siscomex / Classif da Receita Federal.',
+        passos: [
+          {
+            titulo: 'Consulta Individual de NCM',
+            descricao: 'Informe o código NCM com 8 dígitos para visualizar a descrição oficial da TIPI, alíquotas de IPI, ICMS referencial e alíquotas da Reforma Tributária (IBS/CBS).'
+          },
+          {
+            titulo: 'Sincronização em Lote de Todas as Notas',
+            descricao: 'Clique no botão "Sincronizar Todos os NCMs em Lote" para varrer todos os XMLs importados e enriquecer os itens com os metadados oficiais do Siscomex.'
+          }
+        ],
+        atalhoTexto: 'Abrir Atualização Siscomex'
+      }
+    },
+    {
+      id: 'cnae_manual',
+      titulo: '15. Consulta CNAE (IBGE / CONCLA & Receita Federal)',
+      subtitulo: 'Enquadramento no Simples Nacional (Anexos e Fator R), alíquotas de RAT e Reforma Tributária',
+      categoria: 'Tabelas & Classificação Fiscal',
+      icone: FolderTree,
+      telaAlvo: 'cnae',
+      perfis: ['TODOS', 'AUDITOR', 'CONTADOR'],
+      conteudo: {
+        objetivo: 'Pesquisar e auditar códigos de Classificação Nacional de Atividades Econômicas (CNAE 2.3), compreensões oficiais do CONCLA/IBGE e impactos previdenciários e tributários.',
+        passos: [
+          {
+            titulo: 'Pesquisa por Código, Palavra-Chave ou CNPJ',
+            descricao: 'Digite o código CNAE (ex: 6201-5/01), o termo da atividade (ex: software, transporte, higiene) ou o CNPJ do cliente/fornecedor para buscar os CNAEs primário e secundários na Receita Federal.',
+            dica: 'Você pode aplicar o CNAE selecionado como o CNAE Oficial da Empresa Licenciada com um único clique.'
+          },
+          {
+            titulo: 'Navegador Hierárquico das 21 Seções CONCLA',
+            descricao: 'Explore a estrutura em árvore oficial da economia nacional de A (Agricultura) até U (Organismos Internacionais).'
+          },
+          {
+            titulo: 'Auditoria de CNAEs dos Fornecedores',
+            descricao: 'Na aba "CNAEs dos Emitentes & Clientes", cruze a atividade cadastrada do emitente com as mercadorias vendidas para identificar desvios de finalidade ou empresas inidôneas.'
+          }
+        ],
+        atalhoTexto: 'Abrir Consulta CNAE'
+      }
     }
   ];
 
@@ -594,6 +647,7 @@ export const UserManualView: React.FC<UserManualViewProps> = ({
     { termo: 'CFOP', significado: 'Código Fiscal de Operações e Prestações. Identifica a natureza da circulação de mercadorias (ex: 1556 para uso/consumo, 5102 para venda dentro do estado).' },
     { termo: 'CST / CSOSN', significado: 'Código de Situação Tributária. Determina se o produto é tributado integralmente, isento, imune ou sujeito a substituição tributária.' },
     { termo: 'NCM', significado: 'Nomenclatura Comum do Mercosul. Código de 8 dígitos que classifica o produto perante a Receita Federal e define as alíquotas de IPI, ICMS e PIS/COFINS.' },
+    { termo: 'CNAE', significado: 'Classificação Nacional de Atividades Econômicas (CNAE 2.3). Código de 7 dígitos gerido pelo IBGE e Receita Federal que determina a atividade econômica, alíquotas de RAT (1%, 2% e 3%), enquadramento no Simples Nacional (Anexos e Fator R) e regimes diferenciados na Reforma Tributária.' },
     { termo: 'ICMS-ST', significado: 'Substituição Tributária do ICMS. Antecipação do imposto recolhido pelo primeiro elo da cadeia produtiva por meio da MVA (Margem de Valor Agregado).' },
     { termo: 'DIFAL', significado: 'Diferencial de Alíquota do ICMS. Cobrado em compras interestaduais destinadas a consumo ou ativo imobilizado (diferença entre alíquota interna e interestadual).' },
     { termo: 'DANFE', significado: 'Documento Auxiliar da Nota Fiscal Eletrônica. Representação gráfica simplificada da NF-e para acompanhar o transporte físico da carga.' },

@@ -136,6 +136,10 @@ export interface ConsultaCadastralReceita {
     codigo: string;
     descricao: string;
   };
+  cnaesSecundarios?: {
+    codigo: string;
+    descricao: string;
+  }[];
   naturezaJuridica?: string;
   porte?: string;
   capitalSocial?: number;
@@ -324,11 +328,79 @@ export interface FundamentacaoAnalise {
   acaoRecomendada: string;
 }
 
+export interface NcmSiscomexInfo {
+  codigoNcm: string;
+  codigoFormatado: string;
+  descricaoOficial: string;
+  capitulo: string;
+  posicao: string;
+  subposicao?: string;
+  item?: string;
+  subitem?: string;
+  unidadeMedidaEstatistica?: string;
+  dataInicioVigencia: string;
+  dataFimVigencia?: string;
+  situacaoVigencia: 'VIGENTE' | 'EXTINTA' | 'ALTERADA';
+  aliquotaIpiTipiPadrao?: number;
+  aliquotaIcmsPadraoReferencial?: number;
+  aliquotaPisPadrao?: number;
+  aliquotaCofinsPadrao?: number;
+  aliquotaIbsTransicao?: number;
+  aliquotaCbsTransicao?: number;
+  regimeTributarioEspecial?: string;
+  tratamentoAdministrativo?: string;
+  urlSiscomexOficial: string;
+  dataAtualizacaoSincronizacao: string;
+}
+
+export interface CnaeSecao {
+  codigo: string; // Ex: "A", "C", "G", "J"
+  titulo: string; // Ex: "INFORMAÇÃO E COMUNICAÇÃO"
+  divisaoDe: string; // "58"
+  divisaoAte: string; // "63"
+  descricaoDetalhada?: string;
+}
+
+export interface CnaeInfo {
+  codigo: string; // Formatado: "6201-5/01"
+  codigoLimpo: string; // "6201501"
+  descricao: string;
+  secao: string;
+  secaoCodigo: string;
+  divisao: string;
+  divisaoCodigo: string;
+  grupo: string;
+  grupoCodigo: string;
+  classe: string;
+  classeCodigo: string;
+  subclasseCodigo: string;
+  compreende?: string[];
+  naoCompreende?: { descricao: string; cnaeAlternativo?: string }[];
+  aliquotaRat: number; // 1, 2 ou 3 %
+  grauRiscoTrabalho: 'LEVE (1%)' | 'MÉDIO (2%)' | 'GRAVE (3%)';
+  fapSugerido: number;
+  simplesNacional: {
+    permitido: boolean;
+    anexo: 'ANEXO_I' | 'ANEXO_II' | 'ANEXO_III' | 'ANEXO_IV' | 'ANEXO_V' | 'ANEXO_III_OU_V' | 'VEDADO';
+    sujeitoFatorR: boolean;
+    observacao: string;
+  };
+  desoneracaoFolhaCPRB: boolean;
+  reformaTributaria: {
+    regimeIbsCbs: 'PADRAO' | 'DIFERENCIADO' | 'REDUZIDO' | 'IMUNE_ISENTO' | 'MONOFASICO';
+    descricao: string;
+  };
+  obrigacoesAcessorias: string[];
+  urlConclaOficial: string;
+  ultimaAtualizacao: string;
+}
+
 export interface ItemDocumentoFiscal {
   numeroItem: number;
   codigoProduto: string;
   descricao: string;
   ncm: string;
+  ncmSiscomex?: NcmSiscomexInfo;
   cest?: string;
   cfop: string;
   uCom: string;

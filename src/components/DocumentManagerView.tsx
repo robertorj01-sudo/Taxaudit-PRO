@@ -38,7 +38,8 @@ import {
   Radio,
   Wifi,
   Truck,
-  TableProperties
+  TableProperties,
+  Globe
 } from 'lucide-react';
 import { DanfeModal } from './DanfeModal';
 import { DocumentoEntradaVisualizarModal } from './DocumentoEntradaVisualizarModal';
@@ -48,6 +49,7 @@ import { NfcomImportModal } from './NfcomImportModal';
 import { CteImportModal } from './CteImportModal';
 import { DuplicateDetectorModal } from './DuplicateDetectorModal';
 import { ReceitaFederalValidatorModal } from './ReceitaFederalValidatorModal';
+import { SiscomexNcmModal } from './SiscomexNcmModal';
 import { ReceitaFederalService } from '../services/receitaFederalService';
 import { StorageService } from '../services/storageService';
 
@@ -84,6 +86,8 @@ export const DocumentManagerView: React.FC<DocumentManagerViewProps> = ({
   const [showCteModal, setShowCteModal] = useState(false);
   const [showRfbModal, setShowRfbModal] = useState(false);
   const [rfbInitialCnpj, setRfbInitialCnpj] = useState<string | undefined>(undefined);
+  const [showSiscomexModal, setShowSiscomexModal] = useState(false);
+  const [siscomexNcmFoco, setSiscomexNcmFoco] = useState<string | undefined>(undefined);
   const [showDuplicateDetectorModal, setShowDuplicateDetectorModal] = useState(false);
   const [salvandoLocal, setSalvandoLocal] = useState(false);
   const [caminhoPastaAtiva, setCaminhoPastaAtiva] = useState<string>(() => {
@@ -346,6 +350,20 @@ export const DocumentManagerView: React.FC<DocumentManagerViewProps> = ({
           >
             <Zap className="w-4 h-4 text-amber-200" />
             <span>Importar NF3e Energia (SVRS)</span>
+          </button>
+
+          {/* BOTÃO ATUALIZAÇÃO INSTANTÂNEA NCM (PORTAL SISCOMEX CLASSIF) */}
+          <button
+            id="btn-atualizar-ncm-siscomex"
+            onClick={() => {
+              setSiscomexNcmFoco(undefined);
+              setShowSiscomexModal(true);
+            }}
+            className="px-3 py-2 text-xs font-bold rounded-lg bg-blue-800 hover:bg-blue-900 text-white transition flex items-center gap-1.5 shadow-sm border border-blue-500/40"
+            title="Atualização instantânea para NCM através do Portal Único Siscomex Classif (TIPI, IPI, ICMS, PIS/COFINS e IBS/CBS)"
+          >
+            <Globe className="w-4 h-4 text-cyan-300" />
+            <span>Atualizar NCM (Siscomex)</span>
           </button>
 
           {/* BOTÃO SALVAR BASE FISCAL */}
@@ -1072,6 +1090,24 @@ export const DocumentManagerView: React.FC<DocumentManagerViewProps> = ({
             } else {
               setViewingDanfeDoc(doc);
             }
+          }}
+        />
+      )}
+
+      {/* Modal de Atualização Instantânea de NCM via Portal Siscomex Classif */}
+      {showSiscomexModal && (
+        <SiscomexNcmModal
+          documentos={documentos}
+          ncmInicial={siscomexNcmFoco}
+          onClose={() => setShowSiscomexModal(false)}
+          onAtualizarDocumentos={(novosDocs) => {
+            setDocumentos(novosDocs);
+            onAddAuditLog(
+              'ANALISE_MOTOR',
+              'SISCOMEX-NCM',
+              'PORTAL-CLASSIF',
+              'Sincronização em lote de NCMs com o Portal Único Siscomex Classif e atualização da base fiscal.'
+            );
           }}
         />
       )}

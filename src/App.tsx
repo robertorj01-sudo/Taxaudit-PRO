@@ -17,6 +17,8 @@ import { UsuariosAppView } from './components/UsuariosAppView';
 import { CertificadoDigitalView } from './components/CertificadoDigitalView';
 import { LicencaComercialView } from './components/LicencaComercialView';
 import { CloudHostingGuideView } from './components/CloudHostingGuideView';
+import { SiscomexNcmModal } from './components/SiscomexNcmModal';
+import { CnaeConsultationView } from './components/CnaeConsultationView';
 import {
   DocumentoFiscal,
   Empresa,
@@ -216,6 +218,8 @@ export default function App() {
               {activeTab === 'auditoria' && 'WORKBENCH DE AUDITORIA & PARECERES'}
               {activeTab === 'manifesto' && 'MANIFESTAÇÃO DO DESTINATÁRIO (SEFAZ MD-E)'}
               {activeTab === 'regras' && 'MOTOR DE REGRAS & HIERARQUIA NORMATIVA'}
+              {activeTab === 'ncm' && 'ATUALIZAÇÃO INSTANTÂNEA NCM (PORTAL SISCOMEX CLASSIF)'}
+              {activeTab === 'cnae' && 'CONSULTA AOS CÓDIGOS CNAE (IBGE / CONCLA / RECEITA FEDERAL)'}
               {activeTab === 'escrituracao' && 'ESCRITURAÇÃO SPED FISCAL (EFD)'}
               {activeTab === 'protheus' && 'INTEGRAÇÃO TOTVS PROTHEUS (ADVPL)'}
               {activeTab === 'reforma' && 'REFORMA TRIBUTÁRIA (IVA DUAL / EC 132)'}
@@ -407,6 +411,23 @@ export default function App() {
             )}
 
             {activeTab === 'regras' && <TaxRuleEngineView />}
+
+            {activeTab === 'ncm' && (
+              <SiscomexNcmModal
+                documentos={documentos}
+                onAtualizarDocumentos={setDocumentos}
+                onClose={() => setActiveTab('documentos')}
+              />
+            )}
+
+            {activeTab === 'cnae' && (
+              <CnaeConsultationView
+                documentos={documentos}
+                empresa={empresa}
+                onAtualizarEmpresa={setEmpresa}
+                onNavigate={setActiveTab}
+              />
+            )}
 
             {activeTab === 'escrituracao' && (
               <EscrituracaoSpedView

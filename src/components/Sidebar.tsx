@@ -20,7 +20,9 @@ import {
   CheckCircle,
   BookOpen,
   FileCheck2,
-  Cloud
+  Cloud,
+  Globe,
+  FolderTree
 } from 'lucide-react';
 import { Empresa } from '../types/fiscal';
 
@@ -31,6 +33,8 @@ export type ActiveTab =
   | 'auditoria'
   | 'manifesto'
   | 'regras'
+  | 'ncm'
+  | 'cnae'
   | 'escrituracao'
   | 'protheus'
   | 'reforma'
@@ -103,6 +107,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
       badgeColor: 'bg-emerald-950 text-emerald-300 border border-emerald-500/40'
     },
     { id: 'regras', label: 'Motor de Regras & Legislação', icon: Scale },
+    {
+      id: 'ncm',
+      label: 'Atualização NCM (Siscomex)',
+      icon: Globe,
+      badge: 'Siscomex',
+      badgeColor: 'bg-blue-950 text-blue-300 border border-blue-500/40'
+    },
+    {
+      id: 'cnae',
+      label: 'Consulta CNAE (IBGE / CONCLA)',
+      icon: FolderTree,
+      badge: 'CONCLA',
+      badgeColor: 'bg-emerald-950 text-emerald-300 border border-emerald-500/40'
+    },
     { id: 'escrituracao', label: 'Escrituração SPED (EFD)', icon: BookOpenCheck },
     { id: 'protheus', label: 'Integração TOTVS Protheus', icon: Server },
     { id: 'reforma', label: 'Reforma Tributária (IBS/CBS)', icon: TrendingUp },

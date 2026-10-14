@@ -267,7 +267,18 @@ export const EmpresaConfigView: React.FC<EmpresaConfigViewProps> = ({
             </div>
 
             <div className="space-y-1">
-              <label className="font-bold text-slate-700">CNAE Principal</label>
+              <div className="flex items-center justify-between">
+                <label className="font-bold text-slate-700">CNAE Principal</label>
+                {onNavigate && (
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('cnae')}
+                    className="text-[11px] font-bold text-emerald-600 hover:text-emerald-800 hover:underline flex items-center gap-1"
+                  >
+                    <span>Consultar Tabela CONCLA / IBGE &rarr;</span>
+                  </button>
+                )}
+              </div>
               <input
                 type="text"
                 value={formData.cnae}

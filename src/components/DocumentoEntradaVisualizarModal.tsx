@@ -15,9 +15,13 @@ import {
   DollarSign,
   Maximize2,
   Minimize2,
-  ArrowRight
+  ArrowRight,
+  Globe,
+  ExternalLink
 } from 'lucide-react';
 import { DocumentoFiscal, ItemDocumentoFiscal } from '../types/fiscal';
+import { SiscomexNcmModal } from './SiscomexNcmModal';
+import { SiscomexNcmService, SISCOMEX_BASE_URL } from '../services/siscomexNcmService';
 
 interface DocumentoEntradaVisualizarModalProps {
   documento: DocumentoFiscal;
@@ -32,6 +36,7 @@ export const DocumentoEntradaVisualizarModal: React.FC<DocumentoEntradaVisualiza
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [fullscreen, setFullscreen] = useState(false);
+  const [ncmModalSelecionado, setNcmModalSelecionado] = useState<string | null>(null);
 
   // Formatação de valores monetários
   const formatMoeda = (val: number | undefined) => {
@@ -284,6 +289,18 @@ export const DocumentoEntradaVisualizarModal: React.FC<DocumentoEntradaVisualiza
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                const primeiroNcm = documento.itens[0]?.ncm || '73269090';
+                setNcmModalSelecionado(primeiroNcm);
+              }}
+              className="px-2.5 py-1 bg-blue-700 hover:bg-blue-800 text-white rounded text-xs font-semibold flex items-center gap-1.5 transition shadow-2xs"
+              title="Abrir atualização instantânea para NCM através do Portal Único Siscomex Classif"
+            >
+              <Globe className="w-3.5 h-3.5 text-blue-200" />
+              <span>Consultar NCM no Siscomex</span>
+            </button>
+
             <div className="relative">
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
               <input
@@ -465,8 +482,15 @@ export const DocumentoEntradaVisualizarModal: React.FC<DocumentoEntradaVisualiza
                     </td>
 
                     {/* Código NCM */}
-                    <td className="py-1.5 px-2.5 text-center text-slate-800">
-                      {item.ncm}
+                    <td className="py-1.5 px-2.5 text-center">
+                      <button
+                        onClick={() => setNcmModalSelecionado(item.ncm)}
+                        className="font-mono text-blue-700 hover:text-blue-900 font-semibold hover:underline inline-flex items-center gap-1 group"
+                        title={`Consultar NCM ${item.ncm} no Siscomex Classif`}
+                      >
+                        <span>{item.ncm}</span>
+                        <ExternalLink className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 text-blue-500 transition" />
+                      </button>
                     </td>
 
                     {/* Código CFOP */}
@@ -517,6 +541,15 @@ export const DocumentoEntradaVisualizarModal: React.FC<DocumentoEntradaVisualiza
           </div>
         </div>
       </div>
+
+      {/* Modal Siscomex Classif acoplado */}
+      {ncmModalSelecionado && (
+        <SiscomexNcmModal
+          documentos={[documento]}
+          ncmInicial={ncmModalSelecionado}
+          onClose={() => setNcmModalSelecionado(null)}
+        />
+      )}
     </div>
   );
 };
