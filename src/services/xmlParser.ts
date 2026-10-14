@@ -1382,4 +1382,177 @@ export class XmlFiscalParser {
     const num = parseFloat(txt.replace(',', '.'));
     return isNaN(num) ? 0 : num;
   }
+
+  /**
+   * Reconstrói uma representação XML válida SEFAZ a partir de um DocumentoFiscal
+   */
+  public static gerarXmlNFe(doc: DocumentoFiscal): string {
+    if (doc.rawXml && doc.rawXml.trim().startsWith('<')) {
+      return doc.rawXml;
+    }
+
+    const chave = doc.chaveAcesso;
+    const tpNF = doc.tipoOperacao === 'ENTRADA' ? '0' : '1';
+
+    let itensXml = '';
+    doc.itens.forEach((it, idx) => {
+      const qCom = it.qCom ?? it.quantidade ?? 1;
+      const vUnCom = it.vUnCom ?? it.valorUnitario ?? (it.vProd || it.valorTotal || 0);
+      const vProd = it.vProd ?? it.valorTotal ?? (qCom * vUnCom);
+      const uCom = it.uCom || it.unidadeComercial || 'UN';
+      const cstIcms = it.impostos?.icmsCst || '00';
+      const bcIcms = it.impostos?.icmsBaseCalculo ?? vProd;
+      const aliqIcms = it.impostos?.icmsAliquota ?? 0;
+      const vIcms = it.impostos?.icmsValor ?? (bcIcms * aliqIcms / 100);
+
+      const cstPis = it.impostos?.pisCst || '01';
+      const aliqPis = it.impostos?.pisAliquota ?? 0;
+      const vPis = it.impostos?.pisValor ?? (vProd * aliqPis / 100);
+
+      const cstCofins = it.impostos?.cofinsCst || '01';
+      const aliqCofins = it.impostos?.cofinsAliquota ?? 0;
+      const vCofins = it.impostos?.cofinsValor ?? (vProd * aliqCofins / 100);
+
+      itensXml += `
+      <det nItem="${idx + 1}">
+        <prod>
+          <cProd>${it.codigoProduto}</cProd>
+          <cEAN>SEM GTIN</cEAN>
+          <xProd>${it.descricao}</xProd>
+          <NCM>${it.ncm}</NCM>
+          <CFOP>${it.cfop}</CFOP>
+          <uCom>${uCom}</uCom>
+          <qCom>${qCom.toFixed(4)}</qCom>
+          <vUnCom>${vUnCom.toFixed(4)}</vUnCom>
+          <vProd>${vProd.toFixed(2)}</vProd>
+          <cEANTrib>SEM GTIN</cEANTrib>
+          <uTrib>${uCom}</uTrib>
+          <qTrib>${qCom.toFixed(4)}</qTrib>
+          <vUnTrib>${vUnCom.toFixed(4)}</vUnTrib>
+          <indTot>1</indTot>
+        </prod>
+        <imposto>
+          <ICMS>
+            <ICMS00>
+              <orig>${it.origem || '0'}</orig>
+              <CST>${cstIcms}</CST>
+              <modBC>3</modBC>
+              <vBC>${bcIcms.toFixed(2)}</vBC>
+              <pICMS>${aliqIcms.toFixed(2)}</pICMS>
+              <vICMS>${vIcms.toFixed(2)}</vICMS>
+            </ICMS00>
+          </ICMS>
+          <PIS>
+            <PISAliq>
+              <CST>${cstPis}</CST>
+              <vBC>${vProd.toFixed(2)}</vBC>
+              <pPIS>${aliqPis.toFixed(2)}</pPIS>
+              <vPIS>${vPis.toFixed(2)}</vPIS>
+            </PISAliq>
+          </PIS>
+          <COFINS>
+            <COFINSAliq>
+              <CST>${cstCofins}</CST>
+              <vBC>${vProd.toFixed(2)}</vBC>
+              <pCOFINS>${aliqCofins.toFixed(2)}</pCOFINS>
+              <vCOFINS>${vCofins.toFixed(2)}</vCOFINS>
+            </COFINSAliq>
+          </COFINS>
+        </imposto>
+      </det>`;
+    });
+
+    const totalBaseIcms = doc.itens.reduce(
+      (acc, i) => acc + (i.impostos?.icmsBaseCalculo ?? i.vProd ?? i.valorTotal ?? 0),
+      0
+    );
+
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">
+  <NFe xmlns="http://www.portalfiscal.inf.br/nfe">
+    <infNFe Id="NFe${chave}" versao="4.00">
+      <ide>
+        <cUF>35</cUF>
+        <cNF>${doc.numero.padStart(8, '0')}</cNF>
+        <natOp>${doc.naturezaOperacao || 'Venda de mercadoria'}</natOp>
+        <mod>55</mod>
+        <serie>${doc.serie}</serie>
+        <nNF>${doc.numero}</nNF>
+        <dhEmi>${doc.dataEmissao}T12:00:00-03:00</dhEmi>
+        <tpNF>${tpNF}</tpNF>
+        <idDest>1</idDest>
+        <cMunFG>3550308</cMunFG>
+        <tpImp>1</tpImp>
+        <tpEmis>1</tpEmis>
+        <cDV>0</cDV>
+        <tpAmb>1</tpAmb>
+        <finNFe>1</finNFe>
+        <indFinal>0</indFinal>
+        <indPres>1</indPres>
+        <procEmi>0</procEmi>
+        <verProc>TAXAUDIT_PRO_4.0</verProc>
+      </ide>
+      <emit>
+        <CNPJ>${doc.emitente.cnpjCpf.replace(/[^0-9]/g, '')}</CNPJ>
+        <xNome>${doc.emitente.razaoSocial}</xNome>
+        <xFant>${doc.emitente.nomeFantasia || doc.emitente.razaoSocial}</xFant>
+        <enderEmit>
+          <xLgr>${doc.emitente.endereco || 'Avenida Principal'}</xLgr>
+          <nro>100</nro>
+          <xBairro>Centro</xBairro>
+          <cMun>3550308</cMun>
+          <xMun>${doc.emitente.municipio || 'São Paulo'}</xMun>
+          <UF>${doc.emitente.uf || 'SP'}</UF>
+          <CEP>${doc.emitente.cep || '01001000'}</CEP>
+          <cPais>1058</cPais>
+          <xPais>BRASIL</xPais>
+        </enderEmit>
+        <IE>${doc.emitente.inscricaoEstadual?.replace(/[^0-9]/g, '') || 'ISENTO'}</IE>
+        <CRT>3</CRT>
+      </emit>
+      <dest>
+        <CNPJ>${doc.destinatario.cnpjCpf.replace(/[^0-9]/g, '')}</CNPJ>
+        <xNome>${doc.destinatario.razaoSocial}</xNome>
+        <enderDest>
+          <xLgr>${doc.destinatario.endereco || 'Rua Fiscal'}</xLgr>
+          <nro>500</nro>
+          <xBairro>Distrito Industrial</xBairro>
+          <cMun>3550308</cMun>
+          <xMun>${doc.destinatario.municipio || 'São Paulo'}</xMun>
+          <UF>${doc.destinatario.uf || 'SP'}</UF>
+          <CEP>${doc.destinatario.cep || '04000000'}</CEP>
+          <cPais>1058</cPais>
+          <xPais>BRASIL</xPais>
+        </enderDest>
+        <indIEDest>1</indIEDest>
+        <IE>${doc.destinatario.inscricaoEstadual?.replace(/[^0-9]/g, '') || 'ISENTO'}</IE>
+      </dest>
+      ${itensXml}
+      <total>
+        <ICMSTot>
+          <vBC>${totalBaseIcms.toFixed(2)}</vBC>
+          <vICMS>${doc.totalIcms.toFixed(2)}</vICMS>
+          <vICMSDeson>0.00</vICMSDeson>
+          <vFCP>0.00</vFCP>
+          <vBCST>0.00</vBCST>
+          <vST>0.00</vST>
+          <vFCPST>0.00</vFCPST>
+          <vFCPSTRet>0.00</vFCPSTRet>
+          <vProd>${doc.valorTotalDocumento.toFixed(2)}</vProd>
+          <vFrete>0.00</vFrete>
+          <vSeg>0.00</vSeg>
+          <vDesc>0.00</vDesc>
+          <vII>0.00</vII>
+          <vIPI>${doc.totalIpi.toFixed(2)}</vIPI>
+          <vIPIDevol>0.00</vIPIDevol>
+          <vPIS>${doc.totalPis.toFixed(2)}</vPIS>
+          <vCOFINS>${doc.totalCofins.toFixed(2)}</vCOFINS>
+          <vOutro>0.00</vOutro>
+          <vNF>${doc.valorTotalDocumento.toFixed(2)}</vNF>
+        </ICMSTot>
+      </total>
+    </infNFe>
+  </NFe>
+</nfeProc>`;
+  }
 }

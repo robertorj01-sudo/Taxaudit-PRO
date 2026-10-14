@@ -1,5 +1,6 @@
-import { DocumentoFiscal, Empresa, Registro_GEPAT_Fiscal, UsuarioApp, CertificadoDigitalInfo, LicencaComercial } from '../types/fiscal';
+import { DocumentoFiscal, Empresa, Registro_GEPAT_Fiscal, UsuarioApp, CertificadoDigitalInfo, LicencaComercial, ArquivoXmlSalvo } from '../types/fiscal';
 import { EMPRESA_PADRAO, USUARIOS_PADRAO, CERTIFICADO_PADRAO, LICENCA_PADRAO, getDocumentosIniciais } from './sampleData';
+import { InternalDbService } from './internalDbService';
 
 const STORAGE_KEYS = {
   DOCUMENTOS: 'TAXAUDIT_DOCUMENTOS_FISCAIS_V4',
@@ -9,7 +10,8 @@ const STORAGE_KEYS = {
   CERTIFICADO: 'TAXAUDIT_CERTIFICADO_V3',
   LICENCA: 'TAXAUDIT_LICENCA_V3',
   LAST_SAVED: 'TAXAUDIT_LAST_SAVED_TIMESTAMP',
-  AUTOSAVE_ENABLED: 'TAXAUDIT_AUTOSAVE_ENABLED'
+  AUTOSAVE_ENABLED: 'TAXAUDIT_AUTOSAVE_ENABLED',
+  BANCO_INTERNO_CONECTADO: 'TAXAUDIT_BANCO_INTERNO_ATIVO'
 };
 
 export class StorageService {
@@ -242,5 +244,47 @@ export class StorageService {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  }
+
+  /**
+   * Salva os dados no Banco de Dados Interno (IndexedDB + Servidor)
+   */
+  static async salvarNoBancoInterno(dados: {
+    documentos: DocumentoFiscal[];
+    empresa: Empresa;
+    usuarios: UsuarioApp[];
+    certificado: CertificadoDigitalInfo;
+    licenca: LicencaComercial;
+    logs: Registro_GEPAT_Fiscal[];
+  }): Promise<{ sucesso: boolean; mensagem: string; timestamp: string }> {
+    return InternalDbService.salvarTudo(dados);
+  }
+
+  /**
+   * Carrega os dados persistidos do Banco de Dados Interno
+   */
+  static async carregarDoBancoInterno() {
+    return InternalDbService.carregarTudo();
+  }
+
+  /**
+   * Guarda um arquivo XML exportado ou gerado no Cofre do Banco Interno
+   */
+  static async salvarArquivoXmlNoBanco(arquivo: ArquivoXmlSalvo): Promise<boolean> {
+    return InternalDbService.salvarArquivoXml(arquivo);
+  }
+
+  /**
+   * Lista todos os arquivos XML salvos no cofre do Banco Interno
+   */
+  static async listarArquivosXmlDoBanco(): Promise<ArquivoXmlSalvo[]> {
+    return InternalDbService.listarArquivosXml();
+  }
+
+  /**
+   * Exclui um arquivo XML do cofre do Banco Interno
+   */
+  static async excluirArquivoXmlDoBanco(id: string): Promise<boolean> {
+    return InternalDbService.excluirArquivoXml(id);
   }
 }

@@ -39,7 +39,9 @@ import {
   Wifi,
   Truck,
   TableProperties,
-  Globe
+  Globe,
+  Database,
+  Download
 } from 'lucide-react';
 import { DanfeModal } from './DanfeModal';
 import { DocumentoEntradaVisualizarModal } from './DocumentoEntradaVisualizarModal';
@@ -52,6 +54,7 @@ import { ReceitaFederalValidatorModal } from './ReceitaFederalValidatorModal';
 import { SiscomexNcmModal } from './SiscomexNcmModal';
 import { ReceitaFederalService } from '../services/receitaFederalService';
 import { StorageService } from '../services/storageService';
+import { InternalDbService } from '../services/internalDbService';
 
 interface DocumentManagerViewProps {
   documentos: DocumentoFiscal[];
@@ -90,6 +93,7 @@ export const DocumentManagerView: React.FC<DocumentManagerViewProps> = ({
   const [siscomexNcmFoco, setSiscomexNcmFoco] = useState<string | undefined>(undefined);
   const [showDuplicateDetectorModal, setShowDuplicateDetectorModal] = useState(false);
   const [salvandoLocal, setSalvandoLocal] = useState(false);
+  const [notificacaoCofre, setNotificacaoCofre] = useState<string | null>(null);
   const [caminhoPastaAtiva, setCaminhoPastaAtiva] = useState<string>(() => {
     return (
       localStorage.getItem('GEPAT_CAMINHO_PASTA_XML') ||
@@ -128,12 +132,75 @@ export const DocumentManagerView: React.FC<DocumentManagerViewProps> = ({
     }
   };
 
-  const handleSalvarBaseLocal = () => {
+  const handleSalvarBaseLocal = async () => {
     setSalvandoLocal(true);
     StorageService.salvarDocumentos(documentos);
+    try {
+      await InternalDbService.salvarTudo({
+        documentos,
+        empresa,
+        usuarios: StorageService.carregarUsuarios(),
+        certificado: StorageService.carregarCertificado(),
+        licenca: StorageService.carregarLicenca(),
+        logs: []
+      });
+      setNotificacaoCofre('Base salva no Banco de Dados Interno com sucesso!');
+      setTimeout(() => setNotificacaoCofre(null), 3000);
+    } catch (e) {
+      console.warn('Erro ao salvar no banco interno:', e);
+    }
     setTimeout(() => {
       setSalvandoLocal(false);
     }, 1200);
+  };
+
+  const handleExportarXmlDoc = async (doc: DocumentoFiscal) => {
+    try {
+      const rawXml = doc.rawXml || XmlFiscalParser.gerarXmlNFe(doc);
+      const nomeArquivo = `${doc.chaveAcesso}-${doc.tipoDocumento.toLowerCase()}.xml`;
+
+      // 1. Download do arquivo XML para a máquina do usuário
+      const blob = new Blob([rawXml], { type: 'application/xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = nomeArquivo;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      // 2. Persistir no cofre do Banco de Dados Interno
+      await InternalDbService.salvarArquivoXml({
+        id: `XML-${doc.id}-${Date.now().toString().slice(-4)}`,
+        nomeArquivo,
+        chaveAcesso: doc.chaveAcesso,
+        tipoDocumento: doc.tipoDocumento,
+        dataExportacao: new Date().toISOString(),
+        dataEmissao: doc.dataEmissao,
+        emitenteRazao: doc.emitente.razaoSocial,
+        emitenteCnpj: doc.emitente.cnpjCpf,
+        destinatarioRazao: doc.destinatario.razaoSocial,
+        destinatarioCnpj: doc.destinatario.cnpjCpf,
+        valorTotal: doc.valorTotalDocumento,
+        tamanhoBytes: new Blob([rawXml]).size,
+        conteudoXml: rawXml,
+        origem: 'EXPORTACAO_INDIVIDUAL',
+        observacoes: `Arquivo XML exportado e guardado no Cofre do Banco de Dados Interno`
+      });
+
+      setNotificacaoCofre(`XML ${nomeArquivo} salvo no Banco Interno e baixado!`);
+      setTimeout(() => setNotificacaoCofre(null), 3500);
+
+      onAddAuditLog(
+        'EXPORTACAO_SPED',
+        doc.id,
+        doc.chaveAcesso,
+        `Exportação e armazenamento do arquivo XML no Banco de Dados Interno (${nomeArquivo}).`
+      );
+    } catch (e: any) {
+      alert('Erro ao exportar XML: ' + e.message);
+    }
   };
 
   const handleProcessarXmlString = (xmlContent: string, forceReplace: boolean = false) => {
@@ -182,6 +249,25 @@ export const DocumentManagerView: React.FC<DocumentManagerViewProps> = ({
           `Importação e auditoria automática da NF-e ${docAuditado.numero} com cruzamento cadastral Receita Federal (Chave: ${docAuditado.chaveAcesso})`
         );
       }
+
+      // Arquivar automaticamente no cofre do Banco de Dados Interno
+      InternalDbService.salvarArquivoXml({
+        id: `XML-${docAuditado.id}-${Date.now().toString().slice(-4)}`,
+        nomeArquivo: `${docAuditado.chaveAcesso}-${docAuditado.tipoDocumento.toLowerCase()}.xml`,
+        chaveAcesso: docAuditado.chaveAcesso,
+        tipoDocumento: docAuditado.tipoDocumento,
+        dataExportacao: new Date().toISOString(),
+        dataEmissao: docAuditado.dataEmissao,
+        emitenteRazao: docAuditado.emitente.razaoSocial,
+        emitenteCnpj: docAuditado.emitente.cnpjCpf,
+        destinatarioRazao: docAuditado.destinatario.razaoSocial,
+        destinatarioCnpj: docAuditado.destinatario.cnpjCpf,
+        valorTotal: docAuditado.valorTotalDocumento,
+        tamanhoBytes: new Blob([xmlContent]).size,
+        conteudoXml: xmlContent,
+        origem: 'IMPORTACAO_SALVA',
+        observacoes: 'Arquivo XML importado e guardado no cofre interno'
+      }).catch(() => {});
 
       // Dispara cruzamento online na Receita Federal em background
       cruzarCadastroReceitaFederalAsync(docAuditado);
@@ -366,6 +452,17 @@ export const DocumentManagerView: React.FC<DocumentManagerViewProps> = ({
             <span>Atualizar NCM (Siscomex)</span>
           </button>
 
+          {/* BOTÃO BANCO DE DADOS INTERNO & COFRE XML */}
+          <button
+            id="btn-banco-dados-atalho"
+            onClick={() => onNavigate('banco-dados')}
+            className="px-3 py-2 text-xs font-bold rounded-lg bg-indigo-700 hover:bg-indigo-800 text-white transition flex items-center gap-1.5 shadow-sm border border-indigo-500/40"
+            title="Abrir Banco de Dados Interno e Cofre de XMLs Exportados"
+          >
+            <Database className="w-4 h-4 text-emerald-300" />
+            <span>Banco Interno & Cofre XML</span>
+          </button>
+
           {/* BOTÃO SALVAR BASE FISCAL */}
           <button
             id="btn-salvar-base-documentos"
@@ -375,17 +472,17 @@ export const DocumentManagerView: React.FC<DocumentManagerViewProps> = ({
                 ? 'bg-emerald-800 text-white'
                 : 'bg-emerald-700 hover:bg-emerald-800 text-white hover:shadow'
             }`}
-            title="Salvar todas as NF-es importadas e alterações no banco local do navegador"
+            title="Salvar todas as NF-es importadas e alterações no banco interno"
           >
             {salvandoLocal ? (
               <>
                 <Check className="w-4 h-4 text-emerald-300" />
-                <span>Base Salva!</span>
+                <span>Base Salva no Banco!</span>
               </>
             ) : (
               <>
                 <Save className="w-4 h-4 text-emerald-200" />
-                <span>SALVAR BASE</span>
+                <span>SALVAR NO BANCO</span>
               </>
             )}
           </button>
@@ -446,6 +543,22 @@ export const DocumentManagerView: React.FC<DocumentManagerViewProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Alerta de confirmação de salvamento no Cofre do Banco Interno */}
+      {notificacaoCofre && (
+        <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl text-emerald-800 text-xs font-semibold flex items-center justify-between shadow-xs animate-fadeIn">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>{notificacaoCofre}</span>
+          </div>
+          <button
+            onClick={() => onNavigate('banco-dados')}
+            className="underline hover:text-emerald-950 font-bold flex items-center gap-1 text-[11px] shrink-0"
+          >
+            Abrir Cofre do Banco Interno →
+          </button>
+        </div>
+      )}
 
       {/* Barra de Status do Apontamento de Pasta de Rede (Drive R:) */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-blue-950 text-white p-4 rounded-xl shadow-sm border border-slate-700 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -791,6 +904,16 @@ export const DocumentManagerView: React.FC<DocumentManagerViewProps> = ({
                             : doc.tipoDocumento === 'NF3E'
                             ? 'DANF3E'
                             : 'DANFE'}
+                        </button>
+
+                        {/* BOTÃO EXPORTAR & ARQUIVAR XML NO BANCO INTERNO */}
+                        <button
+                          title="Exportar arquivo XML e arquivar no Banco de Dados Interno"
+                          onClick={() => handleExportarXmlDoc(doc)}
+                          className="px-2 py-1 text-xs font-semibold rounded bg-indigo-700 hover:bg-indigo-800 text-white transition flex items-center gap-1 shadow-2xs"
+                        >
+                          <Download className="w-3 h-3 text-indigo-200" />
+                          <span>XML</span>
                         </button>
                         <button
                           title="Abrir Workbench de Auditoria Fiscal"

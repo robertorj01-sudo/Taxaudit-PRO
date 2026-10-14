@@ -620,3 +620,37 @@ export interface ResumoDashboard {
   totalCbsGeral?: number;
   totalCreditosIbsCbsGeral?: number;
 }
+
+export interface ArquivoXmlSalvo {
+  id: string;
+  nomeArquivo: string;
+  chaveAcesso: string;
+  tipoDocumento: TipoDocumento;
+  dataExportacao: string;
+  dataEmissao?: string;
+  emitenteRazao?: string;
+  emitenteCnpj?: string;
+  destinatarioRazao?: string;
+  destinatarioCnpj?: string;
+  valorTotal?: number;
+  tamanhoBytes: number;
+  hashSha256?: string;
+  conteudoXml: string;
+  origem: 'EXPORTACAO_INDIVIDUAL' | 'EXPORTACAO_LOTE' | 'IMPORTACAO_SALVA' | 'SPED_EFD' | 'PASTA_REDE';
+  observacoes?: string;
+}
+
+export interface StatusBancoInterno {
+  conectado: boolean;
+  tipoMotor: 'INDEXED_DB_LOCAL' | 'SERVIDOR_ARQUIVO_INTERNO' | 'HIBRIDO_SINCRONIZADO';
+  totalDocumentos: number;
+  totalArquivosXml: number;
+  totalBytesArmazenados: number;
+  totalLogs: number;
+  totalUsuarios: number;
+  ultimaSincronizacao: string;
+  bancoNome: string;
+  versaoSchema: number;
+  servidorLocalAtivo: boolean;
+  espacoEstimadoMb?: string;
+}

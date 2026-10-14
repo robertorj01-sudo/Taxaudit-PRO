@@ -22,7 +22,8 @@ import {
   FileCheck2,
   Cloud,
   Globe,
-  FolderTree
+  FolderTree,
+  Database
 } from 'lucide-react';
 import { Empresa } from '../types/fiscal';
 
@@ -35,6 +36,7 @@ export type ActiveTab =
   | 'regras'
   | 'ncm'
   | 'cnae'
+  | 'banco-dados'
   | 'escrituracao'
   | 'protheus'
   | 'reforma'
@@ -129,6 +131,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: 'empresa',
       label: 'Cadastro da Empresa',
       icon: Building2
+    },
+    {
+      id: 'banco-dados',
+      label: 'Banco de Dados Interno',
+      icon: Database,
+      badge: 'Ativo',
+      badgeColor: 'bg-emerald-950 text-emerald-300 border border-emerald-500/40'
     },
     {
       id: 'certificado',

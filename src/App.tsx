@@ -19,6 +19,7 @@ import { LicencaComercialView } from './components/LicencaComercialView';
 import { CloudHostingGuideView } from './components/CloudHostingGuideView';
 import { SiscomexNcmModal } from './components/SiscomexNcmModal';
 import { CnaeConsultationView } from './components/CnaeConsultationView';
+import { InternalDatabaseView } from './components/InternalDatabaseView';
 import {
   DocumentoFiscal,
   Empresa,
@@ -30,6 +31,7 @@ import {
 } from './types/fiscal';
 import { EMPRESA_PADRAO, getDocumentosIniciais } from './services/sampleData';
 import { StorageService } from './services/storageService';
+import { InternalDbService } from './services/internalDbService';
 import { DanfeModal } from './components/DanfeModal';
 import { PWAInstallModal } from './components/PWAInstallModal';
 import {
@@ -45,7 +47,8 @@ import {
   RotateCcw,
   BookOpen,
   Sparkles,
-  Award
+  Award,
+  Database
 } from 'lucide-react';
 
 export default function App() {
@@ -145,13 +148,65 @@ export default function App() {
     StorageService.salvarLicenca(licenca);
     StorageService.salvarLogs(auditLogs);
     setUltimaDataSalva(new Date().toISOString());
-    setSalvandoEstado('salvo');
-    setTimeout(() => {
-      setSalvandoEstado('ocioso');
-    }, 2500);
+
+    // Salvar também no Banco de Dados Interno (IndexedDB + Servidor)
+    InternalDbService.salvarTudo({
+      documentos,
+      empresa,
+      usuarios,
+      certificado,
+      licenca,
+      logs: auditLogs
+    }).then(() => {
+      setSalvandoEstado('salvo');
+      setTimeout(() => {
+        setSalvandoEstado('ocioso');
+      }, 2500);
+    }).catch(() => {
+      setSalvandoEstado('salvo');
+      setTimeout(() => {
+        setSalvandoEstado('ocioso');
+      }, 2500);
+    });
   };
 
-  // Auto-save inteligente: Salva automaticamente sempre que documentos, empresa, usuários, certificado ou logs mudarem
+  // Carregamento inicial assíncrono do Banco de Dados Interno (IndexedDB + Servidor Local)
+  React.useEffect(() => {
+    let cancelado = false;
+    InternalDbService.carregarTudo().then(dados => {
+      if (cancelado) return;
+      if (dados.documentos && dados.documentos.length > 0) {
+        setDocumentos(dados.documentos);
+      }
+      if (dados.empresa) {
+        setEmpresa(dados.empresa);
+      }
+      if (dados.usuarios && dados.usuarios.length > 0) {
+        setUsuarios(dados.usuarios);
+        setUsuarioAtual(dados.usuarios[0]);
+      }
+      if (dados.certificado) {
+        setCertificado(dados.certificado);
+      }
+      if (dados.licenca) {
+        setLicenca(dados.licenca);
+      }
+      if (dados.logs && dados.logs.length > 0) {
+        setAuditLogs(dados.logs);
+      }
+      if (dados.dataUltimaSalva) {
+        setUltimaDataSalva(dados.dataUltimaSalva);
+      }
+    }).catch(err => {
+      console.warn('Carga do banco interno finalizada:', err);
+    });
+
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
+  // Auto-save inteligente: Salva automaticamente no localStorage E no Banco de Dados Interno (IndexedDB + Servidor)
   React.useEffect(() => {
     StorageService.salvarDocumentos(documentos);
     StorageService.salvarEmpresa(empresa);
@@ -160,6 +215,21 @@ export default function App() {
     StorageService.salvarLicenca(licenca);
     StorageService.salvarLogs(auditLogs);
     setUltimaDataSalva(new Date().toISOString());
+
+    const timer = setTimeout(() => {
+      InternalDbService.salvarTudo({
+        documentos,
+        empresa,
+        usuarios,
+        certificado,
+        licenca,
+        logs: auditLogs
+      }).catch(err => {
+        console.warn('Auto-save banco interno:', err);
+      });
+    }, 600);
+
+    return () => clearTimeout(timer);
   }, [documentos, empresa, usuarios, certificado, licenca, auditLogs]);
 
   const handleAddAuditLog = (
@@ -220,6 +290,7 @@ export default function App() {
               {activeTab === 'regras' && 'MOTOR DE REGRAS & HIERARQUIA NORMATIVA'}
               {activeTab === 'ncm' && 'ATUALIZAÇÃO INSTANTÂNEA NCM (PORTAL SISCOMEX CLASSIF)'}
               {activeTab === 'cnae' && 'CONSULTA AOS CÓDIGOS CNAE (IBGE / CONCLA / RECEITA FEDERAL)'}
+              {activeTab === 'banco-dados' && 'BANCO DE DADOS INTERNO & REPOSITÓRIO XML'}
               {activeTab === 'escrituracao' && 'ESCRITURAÇÃO SPED FISCAL (EFD)'}
               {activeTab === 'protheus' && 'INTEGRAÇÃO TOTVS PROTHEUS (ADVPL)'}
               {activeTab === 'reforma' && 'REFORMA TRIBUTÁRIA (IVA DUAL / EC 132)'}
@@ -235,6 +306,22 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-2.5 text-xs">
+            {/* BADGE DO BANCO DE DADOS INTERNO */}
+            <button
+              id="btn-status-banco-topo"
+              onClick={() => setActiveTab('banco-dados')}
+              className={`px-2.5 py-1.5 font-bold rounded-lg border flex items-center gap-1.5 transition ${
+                activeTab === 'banco-dados'
+                  ? 'bg-indigo-700 text-white border-indigo-800 shadow-xs'
+                  : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-950 border-indigo-300'
+              }`}
+              title="Banco de Dados Interno Ativo e Persistente - Clique para gerenciar o cofre de XMLs e backups"
+            >
+              <Database className="w-3.5 h-3.5 text-indigo-600" />
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="hidden sm:inline">Banco Interno</span>
+            </button>
+
             {/* BADGE DA LICENÇA VITALÍCIA COM ACESSO RÁPIDO */}
             <button
               id="btn-licenca-vitalicia-topo"
@@ -426,6 +513,21 @@ export default function App() {
                 empresa={empresa}
                 onAtualizarEmpresa={setEmpresa}
                 onNavigate={setActiveTab}
+              />
+            )}
+
+            {activeTab === 'banco-dados' && (
+              <InternalDatabaseView
+                documentos={documentos}
+                setDocumentos={setDocumentos}
+                empresa={empresa}
+                setEmpresa={setEmpresa}
+                usuarios={usuarios}
+                certificado={certificado}
+                licenca={licenca}
+                auditLogs={auditLogs}
+                onNavigate={setActiveTab}
+                onAdicionarLog={handleAddAuditLog}
               />
             )}
 

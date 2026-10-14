@@ -31,7 +31,8 @@ import {
   Users,
   KeyRound,
   FolderTree,
-  Globe
+  Globe,
+  Database
 } from 'lucide-react';
 import { ActiveTab } from './Sidebar';
 
@@ -619,6 +620,34 @@ export const UserManualView: React.FC<UserManualViewProps> = ({
         ],
         atalhoTexto: 'Abrir Consulta CNAE'
       }
+    },
+    {
+      id: 'banco_dados_manual',
+      titulo: '16. Banco de Dados Interno & Repositório de Arquivos XML',
+      subtitulo: 'Persistência estruturada em IndexedDB local + armazenamento em disco no servidor com cofre de XMLs',
+      categoria: 'Banco de Dados & Armazenamento',
+      icone: Database,
+      telaAlvo: 'banco-dados',
+      perfis: ['TODOS', 'TI', 'CONTADOR', 'AUDITOR'],
+      conteudo: {
+        objetivo: 'Garantir que todos os dados cadastrados (empresa, CNPJ, CNAE, usuários, certificados) e todos os arquivos XML importados/exportados fiquem salvos permanentemente em um banco de dados interno sem dependência de nuvem de terceiros.',
+        passos: [
+          {
+            titulo: 'Arquitetura Dupla de Persistência',
+            descricao: 'O sistema utiliza um banco interno local IndexedDB (sem os limites de 5MB do localStorage) integrado a um endpoint REST local que salva em data/banco_interno_fiscal.json e data/xml_vault/.',
+            dica: 'Mesmo fechando o navegador ou limpando cookies, seus dados e notas fiscais continuam seguros.'
+          },
+          {
+            titulo: 'Cofre de Arquivos XML Exportados',
+            descricao: 'Cada XML gerado, exportado ou importado é automaticamente catalogado no cofre com modelo (NF-e, CT-e, NFCom, NF3e), chave de 44 dígitos, emitente e tamanho, disponível para download a qualquer momento.'
+          },
+          {
+            titulo: 'Backups e Dumps Completos (.taxdb.json)',
+            descricao: 'Crie pontos de restauração instantâneos clicando em "Baixar Backup Completo" ou restaure todo o banco de dados carregando um arquivo de backup com um clique.'
+          }
+        ],
+        atalhoTexto: 'Abrir Banco de Dados Interno'
+      }
     }
   ];
 
@@ -655,7 +684,8 @@ export const UserManualView: React.FC<UserManualViewProps> = ({
     { termo: 'EFD ICMS/IPI', significado: 'Escrituração Fiscal Digital (SPED Fiscal). Arquivo digital contendo toda a escrituração de entradas, saídas e apuração de impostos enviada mensalmente à SEFAZ.' },
     { termo: 'ExecAuto (MATA103)', significado: 'Rotina de execução automática em linguagem ADVPL no ERP TOTVS Protheus para inserção programática de Documentos de Entrada nas tabelas SF1 e SD1.' },
     { termo: 'IBS e CBS', significado: 'Imposto sobre Bens e Serviços (IBS estadual/municipal) e Contribuição sobre Bens e Serviços (CBS federal), criados pela Reforma Tributária (EC 132/2023).' },
-    { termo: 'Trilha de Auditoria', significado: 'Registro histórico de todas as transações, assinaturas e alterações fiscais com assinatura digital e carimbo de tempo para efeito probatório perante o TCU e CGU.' }
+    { termo: 'Trilha de Auditoria', significado: 'Registro histórico de todas as transações, assinaturas e alterações fiscais com assinatura digital e carimbo de tempo para efeito probatório perante o TCU e CGU.' },
+    { termo: 'Banco de Dados Interno & Cofre XML', significado: 'Mecanismo híbrido persistente composto por IndexedDB estruturado no cliente e persistência atômica no servidor (data/banco_interno_fiscal.json e data/xml_vault/) que preserva todos os cadastros, notas fiscais e arquivos XML exportados sem dependência de nuvem de terceiros.' }
   ];
 
   // Perguntas Frequentes (FAQ)
@@ -669,8 +699,8 @@ export const UserManualView: React.FC<UserManualViewProps> = ({
       resposta: 'O sistema possui um "Portão de Aprovação" de segurança. Somente documentos que foram explicitamente auditados e aprovados pelo auditor responsável são liberados para a geração do Bloco C da EFD ICMS/IPI, protegendo a empresa contra multas fiscais.'
     },
     {
-      pergunta: 'Como garanto que os dados e aprovações não se percam quando eu fechar a página?',
-      resposta: 'Sempre clique no botão verde "SALVAR" presente no cabeçalho ou menu lateral. Além disso, recomendamos baixar periodicamente o arquivo de "Backup Base (.json)" e salvá-lo em uma pasta segura de sua unidade ou rede corporativa.'
+      pergunta: 'Como garanto que os dados cadastrados e arquivos XML exportados fiquem salvos permanentemente?',
+      resposta: 'O aplicativo conta com conexão automática ao Banco de Dados Interno (IndexedDB de alta capacidade e Servidor Local em data/banco_interno_fiscal.json). O salvamento é automático em tempo real sempre que você cadastra empresa, altera usuários, importa ou exporta XMLs. Além disso, você pode acessar a aba "Banco de Dados Interno" para visualizar o Cofre de Arquivos XML guardados e baixar backups completos (.taxdb.json).'
     },
     {
       pergunta: 'Posso usar o sistema sem conexão com a internet?',
