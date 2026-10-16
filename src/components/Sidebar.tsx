@@ -23,7 +23,8 @@ import {
   Cloud,
   Globe,
   FolderTree,
-  Database
+  Database,
+  Shuffle
 } from 'lucide-react';
 import { Empresa } from '../types/fiscal';
 
@@ -36,6 +37,7 @@ export type ActiveTab =
   | 'regras'
   | 'ncm'
   | 'cnae'
+  | 'cfop'
   | 'banco-dados'
   | 'escrituracao'
   | 'protheus'
@@ -122,6 +124,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: FolderTree,
       badge: 'CONCLA',
       badgeColor: 'bg-emerald-950 text-emerald-300 border border-emerald-500/40'
+    },
+    {
+      id: 'cfop',
+      label: 'Classificação CFOP & Naturezas',
+      icon: Shuffle,
+      badge: 'Entradas',
+      badgeColor: 'bg-indigo-950 text-indigo-300 border border-indigo-500/40'
     },
     { id: 'escrituracao', label: 'Escrituração SPED (EFD)', icon: BookOpenCheck },
     { id: 'protheus', label: 'Integração TOTVS Protheus', icon: Server },

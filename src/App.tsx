@@ -19,6 +19,7 @@ import { LicencaComercialView } from './components/LicencaComercialView';
 import { CloudHostingGuideView } from './components/CloudHostingGuideView';
 import { SiscomexNcmModal } from './components/SiscomexNcmModal';
 import { CnaeConsultationView } from './components/CnaeConsultationView';
+import { ClassificacaoCfopView } from './components/ClassificacaoCfopView';
 import { InternalDatabaseView } from './components/InternalDatabaseView';
 import {
   DocumentoFiscal,
@@ -290,6 +291,7 @@ export default function App() {
               {activeTab === 'regras' && 'MOTOR DE REGRAS & HIERARQUIA NORMATIVA'}
               {activeTab === 'ncm' && 'ATUALIZAÇÃO INSTANTÂNEA NCM (PORTAL SISCOMEX CLASSIF)'}
               {activeTab === 'cnae' && 'CONSULTA AOS CÓDIGOS CNAE (IBGE / CONCLA / RECEITA FEDERAL)'}
+              {activeTab === 'cfop' && 'CLASSIFICAÇÃO DA NATUREZA DA OPERAÇÃO & TABELA CFOP (ENTRADAS)'}
               {activeTab === 'banco-dados' && 'BANCO DE DADOS INTERNO & REPOSITÓRIO XML'}
               {activeTab === 'escrituracao' && 'ESCRITURAÇÃO SPED FISCAL (EFD)'}
               {activeTab === 'protheus' && 'INTEGRAÇÃO TOTVS PROTHEUS (ADVPL)'}
@@ -512,6 +514,14 @@ export default function App() {
                 documentos={documentos}
                 empresa={empresa}
                 onAtualizarEmpresa={setEmpresa}
+                onNavigate={setActiveTab}
+              />
+            )}
+
+            {activeTab === 'cfop' && (
+              <ClassificacaoCfopView
+                documentos={documentos}
+                onSelectDoc={setSelectedDocId}
                 onNavigate={setActiveTab}
               />
             )}

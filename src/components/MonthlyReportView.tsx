@@ -20,6 +20,7 @@ import {
   DollarSign
 } from 'lucide-react';
 import { DocumentoFiscal, Empresa } from '../types/fiscal';
+import { CfopService } from '../services/cfopService';
 
 interface MonthlyReportViewProps {
   documentos: DocumentoFiscal[];
@@ -760,7 +761,8 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50/70 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
                       <th className="py-2.5 px-3">CFOP</th>
-                      <th className="py-2.5 px-3">Descrição Operacional</th>
+                      <th className="py-2.5 px-3">Classificação da Natureza da Operação</th>
+                      <th className="py-2.5 px-3 text-center">Tipo de Transação</th>
                       <th className="py-2.5 px-3 text-center">Nº Notas</th>
                       <th className="py-2.5 px-3 text-center">Nº Itens</th>
                       <th className="py-2.5 px-3 text-right">Valor Contábil</th>
@@ -777,16 +779,9 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
                           ? (item.valorTotal / totaisPeriodo.totalValor) * 100
                           : 0;
 
-                      let descricaoCfop = 'Operação Comercial Fiscal';
-                      if (item.cfop === '1102' || item.cfop === '2102') {
-                        descricaoCfop = 'Compra p/ comercialização ou matéria-prima';
-                      } else if (item.cfop === '1556' || item.cfop === '2556') {
-                        descricaoCfop = 'Compra de material para uso ou consumo';
-                      } else if (item.cfop === '1403' || item.cfop === '2403') {
-                        descricaoCfop = 'Compra mercadoria sujeita a ICMS ST';
-                      } else if (item.cfop === '5102' || item.cfop === '6102') {
-                        descricaoCfop = 'Venda de mercadoria adquirida de terceiros';
-                      }
+                      const classif = CfopService.obterClassificacao(item.cfop);
+                      const descricaoCfop = classif?.naturezaOperacao || classif?.descricaoOficial || 'Operação Comercial Fiscal';
+                      const tipoTransacao = classif?.transacaoTipo;
 
                       return (
                         <tr key={item.cfop} className="hover:bg-slate-50 transition">
@@ -795,8 +790,28 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
                               {item.cfop}
                             </span>
                           </td>
-                          <td className="py-3 px-3 font-medium text-slate-700">
-                            {descricaoCfop}
+                          <td className="py-3 px-3">
+                            <div className="font-semibold text-slate-800 text-xs">{descricaoCfop}</div>
+                            {classif?.descricaoOficial && classif.descricaoOficial !== descricaoCfop && (
+                              <div className="text-[10px] text-slate-400 line-clamp-1">{classif.descricaoOficial}</div>
+                            )}
+                          </td>
+                          <td className="py-3 px-3 text-center whitespace-nowrap">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              tipoTransacao === 'ENTRADA_MERCADORIA'
+                                ? 'bg-blue-100 text-blue-800'
+                                : tipoTransacao === 'ENTRADA_BEM_ATIVO'
+                                ? 'bg-amber-100 text-amber-900'
+                                : tipoTransacao === 'AQUISICAO_SERVICO'
+                                ? 'bg-purple-100 text-purple-900'
+                                : 'bg-slate-100 text-slate-700'
+                            }`}>
+                              {tipoTransacao === 'ENTRADA_MERCADORIA' && 'Entrada Mercadoria'}
+                              {tipoTransacao === 'ENTRADA_BEM_ATIVO' && 'Entrada Bem (Ativo)'}
+                              {tipoTransacao === 'AQUISICAO_SERVICO' && 'Aquisição Serviço'}
+                              {tipoTransacao === 'OUTRA_TRANSACAO' && 'Outra Transação'}
+                              {!tipoTransacao && 'Entrada Fiscal'}
+                            </span>
                           </td>
                           <td className="py-3 px-3 text-center font-mono">{item.qtdNotas.size}</td>
                           <td className="py-3 px-3 text-center font-mono text-slate-500">

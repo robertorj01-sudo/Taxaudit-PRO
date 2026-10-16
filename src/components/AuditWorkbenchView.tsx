@@ -22,10 +22,12 @@ import {
   Sparkles,
   Info,
   Printer,
-  Save
+  Save,
+  Shuffle
 } from 'lucide-react';
 import { DanfeModal } from './DanfeModal';
 import { StorageService } from '../services/storageService';
+import { CfopService } from '../services/cfopService';
 
 interface AuditWorkbenchViewProps {
   documentos: DocumentoFiscal[];
@@ -312,6 +314,27 @@ export const AuditWorkbenchView: React.FC<AuditWorkbenchViewProps> = ({
             <div>
               <span className="font-semibold text-slate-700">Natureza:</span> {currentDoc.naturezaOperacao}
             </div>
+
+            {/* Cruzamento da Natureza da Operação com o CFOP do item selecionado */}
+            {currentItem && (() => {
+              const classif = CfopService.obterClassificacao(currentItem.cfop);
+              const isInter = currentDoc.emitente.uf !== currentDoc.destinatario.uf;
+              const cruzamento = CfopService.cruzarCfopEntrada(currentItem.cfop, 'INDUSTRIALIZACAO', isInter);
+              return (
+                <div className="mt-2 p-2 bg-blue-50/80 rounded-lg border border-blue-200 text-[10px] space-y-1">
+                  <div className="font-bold text-blue-900 flex items-center gap-1">
+                    <Shuffle className="w-3 h-3 text-blue-700" />
+                    <span>Cruzamento CFOP x Natureza</span>
+                  </div>
+                  <div className="text-slate-700">
+                    CFOP {currentItem.cfop}: <strong className="text-slate-900">{classif?.naturezaOperacao || 'Operação Fiscal'}</strong>
+                  </div>
+                  <div className="text-emerald-800 font-semibold pt-1 border-t border-blue-200/60">
+                    Entrada Sugerida: <span className="font-mono font-bold">{isInter ? cruzamento.cfopEntradaInterestadual : cruzamento.cfopEntradaInterno}</span> ({cruzamento.naturezaEntradaSugerida})
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
 

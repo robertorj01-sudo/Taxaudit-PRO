@@ -9,6 +9,7 @@ import {
 } from '../types/fiscal';
 import { NORMAS_CATALOGO } from './normativeDatabase';
 import { ReceitaFederalService } from './receitaFederalService';
+import { CfopService } from './cfopService';
 
 const UFS_SUL_SUDESTE = ['SP', 'RJ', 'MG', 'PR', 'SC', 'RS'];
 const UFS_NORTE_NORDESTE_CO_ES = [
@@ -359,9 +360,29 @@ export class TaxRuleEngine {
         });
       }
     }
+
+    // 4. Cruzamento e Validação da Natureza da Operação com a Tabela Oficial de CFOP
+    const resultadoCfopAuditoria = CfopService.auditarDocumentoFiscal(doc);
+    if (!resultadoCfopAuditoria.conforme) {
+      resultadoCfopAuditoria.divergencias.forEach((div, i) => {
+        ocorrencias.push({
+          id: `OC-CAB-${doc.id}-NAT-CFOP-${i + 1}`,
+          tributo: 'GERAL',
+          tipo: 'CFOP_INCOMPATIVEL_OPERACAO',
+          severidade: 'DIVERGENCIA',
+          descricao: div,
+          regraAplicada: 'Classificação da Natureza da Operação x Tabela CFOP (Ajuste SINIEF 07/01)',
+          fundamentacaoLegal: 'Anexo ao Convênio S/N de 15/12/1970 - Tabela de Códigos Fiscais de Operações e Prestações (Entradas de Mercadorias, Bens e Serviços).',
+          conclusao: 'Incompatibilidade entre a Natureza da Operação declarada no documento e a codificação oficial dos itens faturados.',
+          acaoRecomendada: 'Adequar a Natureza da Operação na escrituração de entrada e verificar com o emitente se for o caso.',
+          grauConfianca: 'ALTA',
+          resolvido: false
+        });
+      });
+    }
   }
 
-  // --- Auditoria de CFOP ---
+  // --- Auditoria de CFOP com Classificação da Natureza da Operação e Cruzamento de Entradas ---
   private static auditarCfop(
     item: ItemDocumentoFiscal,
     itemNum: number,
@@ -373,6 +394,24 @@ export class TaxRuleEngine {
   ): void {
     const cfopPrimeiroDigito = item.cfop.charAt(0);
 
+    // Classificação Normativa pela Tabela Oficial de CFOP (Entradas de Mercadorias, Bens e Serviços)
+    const classif = CfopService.obterClassificacao(item.cfop);
+    if (classif) {
+      const cruzamento = CfopService.cruzarCfopEntrada(item.cfop, 'INDUSTRIALIZACAO', isInterestadual);
+      fundamentacoes.push({
+        tributo: 'CFOP / CLASSIFICAÇÃO FISCAL',
+        regraCodigo: 'REG-CRUZAMENTO-CFOP-NATUREZA',
+        regraNome: `Classificação da Natureza da Operação: CFOP ${classif.cfop} - ${classif.naturezaOperacao}`,
+        hierarquiaNormativa: 'Convênio SINIEF / Norma Nacional',
+        normaNome: 'Tabela Oficial CFOP - Convênio S/Nº 1970 e Ajustes SINIEF (SEFAZ / RFB)',
+        artigo: classif.fundamentoLegal,
+        vigencia: 'Vigente',
+        explicacao: `${classif.descricaoOficial}. ${classif.detalhamentoFiscal} Para fins de escrituração fiscal de entrada na empresa adquirente (${cruzamento.naturezaEntradaSugerida}): Sugestão de CFOP de Entrada: ${isInterestadual ? cruzamento.cfopEntradaInterestadual : cruzamento.cfopEntradaInterno}.`,
+        grauConfianca: 'ALTA',
+        acaoRecomendada: 'Classificar o documento de entrada no ERP/SPED com o devido CFOP de entrada de acordo com a destinação do bem, mercadoria ou serviço.'
+      });
+    }
+
     if (isInterestadual) {
       // Operação interestadual DEVE iniciar com 2 (entrada) ou 6 (saída)
       if (cfopPrimeiroDigito === '1' || cfopPrimeiroDigito === '5') {
@@ -382,7 +421,7 @@ export class TaxRuleEngine {
           tributo: 'GERAL',
           tipo: 'CFOP_INCOMPATIVEL_OPERACAO',
           severidade: 'ERRO_PROVAVEL',
-          descricao: `CFOP ${item.cfop} é para operação interna, mas a operação é interestadual (${ufOrigem} -> ${ufDestino}). Deveria iniciar com '6' para saídas interestaduais.`,
+          descricao: `CFOP ${item.cfop} é para operação interna, mas a operação é interestadual (${ufOrigem} -> ${ufDestino}). Deveria iniciar com '6' para saídas interestaduais ou '2' para entradas interestaduais.`,
           regraAplicada: 'Tabela de CFOP - Convênio S/N de 1970 e Ajuste SINIEF 07/05',
           fundamentacaoLegal: 'Anexo ao Convênio S/N de 15/12/1970 - Tabela de Códigos Fiscais de Operações e Prestações.',
           conclusao: 'Incompatibilidade entre a localização geográfica dos participantes e o CFOP declarado no documento.',

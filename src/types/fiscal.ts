@@ -654,3 +654,64 @@ export interface StatusBancoInterno {
   servidorLocalAtivo: boolean;
   espacoEstimadoMb?: string;
 }
+
+export type CategoriaCfop =
+  | 'MERCADORIA_INDUSTRIALIZACAO'
+  | 'MERCADORIA_COMERCIALIZACAO'
+  | 'BEM_ATIVO_IMOBILIZADO'
+  | 'MATERIAL_USO_CONSUMO'
+  | 'SERVICO_TRANSPORTE'
+  | 'SERVICO_COMUNICACAO'
+  | 'ENERGIA_ELETRICA'
+  | 'DEVOLUCAO_RETORNO'
+  | 'TRANSFERENCIA'
+  | 'OUTRAS_ENTRADAS'
+  | 'SAIDA_FORNECEDOR';
+
+export type TipoTransacaoEntrada =
+  | 'ENTRADA_MERCADORIA'
+  | 'ENTRADA_BEM_ATIVO'
+  | 'AQUISICAO_SERVICO'
+  | 'OUTRA_TRANSACAO';
+
+export type AbrangenciaCfop =
+  | 'ESTADUAL'
+  | 'INTERESTADUAL'
+  | 'EXTERIOR'
+  | 'SAIDA_ESTADUAL'
+  | 'SAIDA_INTERESTADUAL'
+  | 'SAIDA_EXTERIOR';
+
+export interface ClassificacaoCfopNatureza {
+  cfop: string;
+  descricaoOficial: string;
+  naturezaOperacao: string;
+  categoria: CategoriaCfop;
+  transacaoTipo: TipoTransacaoEntrada;
+  abrangencia: AbrangenciaCfop;
+  aplicaEntradaMercadoria: boolean;
+  aplicaEntradaBem: boolean;
+  aplicaAquisicaoServico: boolean;
+  permiteCreditoIcms: boolean;
+  permiteCreditoIpi: boolean;
+  permiteCreditoPisCofins: boolean;
+  permiteCreditoIbsCbs: boolean;
+  cfopEntradaSugeridoInterno?: string;
+  cfopEntradaSugeridoInterestadual?: string;
+  fundamentoLegal: string;
+  detalhamentoFiscal: string;
+  exemploUso: string;
+}
+
+export interface CruzamentoCfopEntrada {
+  cfopOrigem: string;
+  naturezaOrigem: string;
+  cfopEntradaInterno: string;
+  cfopEntradaInterestadual: string;
+  naturezaEntradaSugerida: string;
+  destinacaoEmpresa: 'INDUSTRIALIZACAO' | 'REVENDA' | 'ATIVO_IMOBILIZADO' | 'USO_CONSUMO' | 'PRESTACAO_SERVICO';
+  direitoCreditoIcms: boolean;
+  direitoCreditoPisCofins: boolean;
+  direitoCreditoIbsCbs: boolean;
+  justificativaNormativa: string;
+}
