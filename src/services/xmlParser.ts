@@ -1,8 +1,16 @@
-import { DocumentoFiscal, ItemDocumentoFiscal, TipoOperacao, Participante } from '../types/fiscal';
+import {
+  DocumentoFiscal,
+  ItemDocumentoFiscal,
+  TipoOperacao,
+  Participante,
+  DadosServicoNFSe,
+  PadraoLayoutNFSe
+} from '../types/fiscal';
+import { NfseService } from './nfseService';
 
 export class XmlFiscalParser {
   /**
-   * Converte uma string XML de NF-e (layout SEFAZ 4.00) em um objeto DocumentoFiscal estruturado
+   * Converte uma string XML de NF-e, CT-e, NF3e, NFCom ou NFS-e (Prefeituras do Brasil) em um objeto DocumentoFiscal estruturado
    */
   public static parseNFeXml(xmlContent: string): DocumentoFiscal {
     const parser = new DOMParser();
@@ -32,9 +40,32 @@ export class XmlFiscalParser {
       return this.parseNFComXmlDoc(xmlDoc, infNFCom, xmlContent);
     }
 
+    // 4. Verificar se é uma NFS-e (Nota Fiscal de Serviços Eletrônica emitida por Prefeituras do Brasil / Padrão Nacional)
+    const isNFSe =
+      xmlDoc.getElementsByTagName('CompNfse')[0] ||
+      xmlDoc.getElementsByTagName('Nfse')[0] ||
+      xmlDoc.getElementsByTagName('InfNfse')[0] ||
+      xmlDoc.getElementsByTagName('tcInfNfse')[0] ||
+      xmlDoc.getElementsByTagName('infNfse')[0] ||
+      xmlDoc.getElementsByTagName('ConsultarNfseResposta')[0] ||
+      xmlDoc.getElementsByTagName('infNFSe')[0] ||
+      xmlDoc.getElementsByTagName('NFSe')[0] ||
+      xmlDoc.getElementsByTagName('DPS')[0] ||
+      xmlDoc.getElementsByTagName('NotaFiscal')[0] ||
+      xmlDoc.getElementsByTagName('RetornoEnvioLoteRPS')[0] ||
+      xmlDoc.getElementsByTagName('Rps')[0] ||
+      xmlDoc.getElementsByTagName('GerarNfseResposta')[0] ||
+      xmlDoc.getElementsByTagName('tcCompNfse')[0] ||
+      xmlDoc.getElementsByTagName('ConsultarLoteRpsResposta')[0];
+    if (isNFSe) {
+      return this.parseNFSeXmlDoc(xmlDoc, xmlContent);
+    }
+
     const infNFe = xmlDoc.getElementsByTagName('infNFe')[0];
     if (!infNFe) {
-      throw new Error('Elemento fiscal <infNFe>, <infCte>, <infNF3e> ou <infNFCom> não localizado no XML.');
+      throw new Error(
+        'Elemento fiscal <infNFe>, <infCte>, <infNF3e>, <infNFCom> ou NFS-e de Prefeitura (<CompNfse>, <Nfse>, <DPS>, <NotaFiscal>) não localizado no XML.'
+      );
     }
 
     const chaveAcesso = (infNFe.getAttribute('Id') || '').replace(/^NFe/, '');
@@ -1381,6 +1412,541 @@ export class XmlFiscalParser {
     if (!txt) return 0;
     const num = parseFloat(txt.replace(',', '.'));
     return isNaN(num) ? 0 : num;
+  }
+
+  private static findNode(parent: Element | Document | null | undefined, tagNames: string[]): Element | null {
+    if (!parent) return null;
+    for (const tag of tagNames) {
+      const els = parent.getElementsByTagName(tag);
+      if (els && els.length > 0) return els[0];
+    }
+    // Match case-insensitively by localName if direct match failed
+    const allEls = parent.getElementsByTagName('*');
+    for (let i = 0; i < allEls.length; i++) {
+      const local = allEls[i].localName || '';
+      for (const tag of tagNames) {
+        if (local.toLowerCase() === tag.toLowerCase()) {
+          return allEls[i];
+        }
+      }
+    }
+    return null;
+  }
+
+  private static findText(parent: Element | Document | null | undefined, tagNames: string[]): string {
+    if (!parent) return '';
+    for (const tag of tagNames) {
+      const el = parent.getElementsByTagName(tag)[0];
+      if (el && el.textContent && el.textContent.trim()) {
+        return el.textContent.trim();
+      }
+    }
+    const allEls = parent.getElementsByTagName('*');
+    for (let i = 0; i < allEls.length; i++) {
+      const local = allEls[i].localName || '';
+      for (const tag of tagNames) {
+        if (local.toLowerCase() === tag.toLowerCase() && allEls[i].textContent?.trim()) {
+          return allEls[i].textContent!.trim();
+        }
+      }
+    }
+    return '';
+  }
+
+  private static findNumber(parent: Element | Document | null | undefined, tagNames: string[]): number {
+    const txt = this.findText(parent, tagNames);
+    if (!txt) return 0;
+    const clean = txt.replace(/\s/g, '').replace(',', '.');
+    const num = parseFloat(clean);
+    return isNaN(num) ? 0 : num;
+  }
+
+  /**
+   * Interpreta XML de NFS-e (Nota Fiscal de Serviços Eletrônica) emitida por Prefeituras do Brasil
+   * Compatível com Padrão Nacional (CGNFS-e / DPS / RFB), Padrão ABRASF (v1.00 a v2.04),
+   * Padrão Paulistana (Nota do Milhão - São Paulo), Padrão Carioca (Rio de Janeiro),
+   * DSF, Ginfes, Betha, IPM e outros provedores municipais.
+   */
+  public static parseNFSeXmlDoc(xmlDoc: Document, xmlContent: string): DocumentoFiscal {
+    // 1. Identificar Layout / Provedor
+    let padraoLayout: PadraoLayoutNFSe = 'ABRASF_V2';
+    if (
+      xmlDoc.getElementsByTagName('infNFSe')[0] ||
+      xmlDoc.getElementsByTagName('DPS')[0] ||
+      xmlDoc.getElementsByTagName('nNFSe')[0] ||
+      xmlContent.includes('sped.fazenda.gov.br')
+    ) {
+      padraoLayout = 'PADRAO_NACIONAL';
+    } else if (
+      xmlDoc.getElementsByTagName('NumeroNFe')[0] ||
+      xmlDoc.getElementsByTagName('CPFCNPJPrestador')[0] ||
+      xmlDoc.getElementsByTagName('ChaveRPS')[0] ||
+      xmlContent.includes('notadomilhao') ||
+      xmlContent.includes('prefeitura.sp.gov.br')
+    ) {
+      padraoLayout = 'PAULISTANA';
+    } else if (
+      xmlDoc.getElementsByTagName('tcCompNfse')[0] ||
+      xmlContent.includes('notacarioca') ||
+      xmlContent.includes('rio.rj.gov.br')
+    ) {
+      padraoLayout = 'CARIOCA';
+    } else if (xmlContent.includes('ginfes.com.br')) {
+      padraoLayout = 'GINFES';
+    } else if (xmlContent.includes('betha.com.br')) {
+      padraoLayout = 'BETHA';
+    } else if (xmlContent.includes('dsfnet.com.br')) {
+      padraoLayout = 'DSF';
+    } else if (xmlContent.includes('ipm.com.br')) {
+      padraoLayout = 'IPM';
+    } else if (xmlDoc.getElementsByTagName('tcInfNfse')[0] || xmlDoc.getElementsByTagName('ValoresNfse')[0]) {
+      padraoLayout = 'ABRASF_V2';
+    } else if (xmlDoc.getElementsByTagName('InfNfse')[0]) {
+      padraoLayout = 'ABRASF_V1';
+    }
+
+    // 2. Extração de Identificação do Documento
+    const numero =
+      this.findText(xmlDoc, ['Numero', 'NumeroNFe', 'nNFSe', 'nNfse', 'NumeroNota', 'NumNfse', 'nNF', 'NumeroRps']) ||
+      '000001';
+
+    const serie =
+      this.findText(xmlDoc, ['Serie', 'SerieNFe', 'sNFSe', 'SerieRps', 'serie', 'SeriePrestacao']) || '1';
+
+    const codigoVerificacao = this.findText(xmlDoc, [
+      'CodigoVerificacao',
+      'CodVerificacao',
+      'cVerif',
+      'CodigoAutenticidade',
+      'CodigoAutenticidadeNFe',
+      'Assinatura'
+    ]);
+
+    let dataEmissaoRaw = this.findText(xmlDoc, [
+      'DataEmissao',
+      'DataEmissaoNFe',
+      'dhEmi',
+      'dEmi',
+      'dtEmissao',
+      'DataEmissaoRPS'
+    ]);
+
+    let dataEmissao = new Date().toISOString();
+    if (dataEmissaoRaw) {
+      if (dataEmissaoRaw.includes('T')) {
+        dataEmissao = dataEmissaoRaw;
+      } else if (dataEmissaoRaw.match(/^\d{4}-\d{2}-\d{2}/)) {
+        dataEmissao = `${dataEmissaoRaw.substring(0, 10)}T12:00:00-03:00`;
+      } else if (dataEmissaoRaw.match(/^\d{2}\/\d{2}\/\d{4}/)) {
+        const parts = dataEmissaoRaw.split('/');
+        dataEmissao = `${parts[2]}-${parts[1]}-${parts[0]}T12:00:00-03:00`;
+      }
+    }
+
+    const competenciaRaw = this.findText(xmlDoc, ['Competencia', 'dCompet']);
+    const competencia = competenciaRaw ? competenciaRaw.substring(0, 10) : dataEmissao.substring(0, 7);
+
+    // Chave de Acesso única da NFS-e
+    let chaveAcesso = this.findText(xmlDoc, ['chaveAcesso', 'ChaveAcesso', 'ChaveNfse', 'id', 'Id']);
+    if (!chaveAcesso || chaveAcesso.length < 10) {
+      // Monta identificador único estruturado para a NFS-e
+      chaveAcesso = `NFSE${numero.padStart(9, '0')}${serie.padStart(3, '0')}${codigoVerificacao ? codigoVerificacao.replace(/[^a-zA-Z0-9]/g, '').slice(0, 10) : Date.now()}`;
+    } else {
+      chaveAcesso = chaveAcesso.replace(/^(NFS|DPS|NFe)/i, '');
+    }
+
+    // 3. Prestador de Serviços (Emitente)
+    const prestadorNode =
+      this.findNode(xmlDoc, ['PrestadorServico', 'Prestador', 'IdentificacaoPrestador', 'emit', 'tcDadosPrestador']) ||
+      xmlDoc;
+
+    const prestadorCnpjCpf =
+      this.findText(prestadorNode, ['Cnpj', 'CNPJ', 'Cpf', 'CPF', 'CpfCnpj', 'CNPJPrestador']) ||
+      this.findText(xmlDoc, ['CPFCNPJPrestador', 'CNPJPrestador']) ||
+      '00000000000000';
+
+    const prestadorRazao =
+      this.findText(prestadorNode, ['RazaoSocial', 'xNome', 'RazaoSocialPrestador', 'NomeRazaoSocial']) ||
+      this.findText(xmlDoc, ['RazaoSocialPrestador']) ||
+      'PRESTADOR DE SERVIÇOS LTDA';
+
+    const prestadorFantasia =
+      this.findText(prestadorNode, ['NomeFantasia', 'xFant']) || prestadorRazao;
+
+    const prestadorIm =
+      this.findText(prestadorNode, ['InscricaoMunicipal', 'InscricaoMunicipalPrestador', 'IM']) ||
+      this.findText(xmlDoc, ['InscricaoMunicipalPrestador']);
+
+    const prestadorIe = this.findText(prestadorNode, ['InscricaoEstadual', 'IE']);
+
+    const prestadorMunIbge =
+      this.findText(prestadorNode, ['CodigoMunicipio', 'cMun', 'cMunPrestador', 'cMunFG', 'CodigoMunicipioPrestador']) ||
+      this.findText(xmlDoc, ['CodigoMunicipioPrestador', 'cMunFG', 'cMun']);
+
+    const prestadorMunNome =
+      this.findText(prestadorNode, ['xMun', 'Municipio', 'xMunicipio', 'NomeMunicipio']) ||
+      'Município Emissor';
+
+    const prestadorUf =
+      this.findText(prestadorNode, ['Uf', 'UF', 'uf']) || 'SP';
+
+    const prestadorLogradouro =
+      this.findText(prestadorNode, ['Endereco', 'xLgr', 'Logradouro', 'TipoLogradouro']) ||
+      'Endereço do Prestador';
+
+    const prestadorNum = this.findText(prestadorNode, ['Numero', 'nro', 'NumeroEndereco']);
+    const prestadorBairro = this.findText(prestadorNode, ['Bairro', 'xBairro']);
+    const prestadorCep = this.findText(prestadorNode, ['Cep', 'CEP']);
+    const prestadorEmail = this.findText(prestadorNode, ['Email', 'xEmail']);
+    const prestadorFone = this.findText(prestadorNode, ['Telefone', 'fone']);
+
+    const emitente: Participante = {
+      cnpjCpf: prestadorCnpjCpf,
+      razaoSocial: prestadorRazao,
+      nomeFantasia: prestadorFantasia,
+      inscricaoMunicipal: prestadorIm,
+      inscricaoEstadual: prestadorIe,
+      indicadorContribuinte: '9',
+      endereco: `${prestadorLogradouro}${prestadorNum ? ', ' + prestadorNum : ''}${prestadorBairro ? ' - ' + prestadorBairro : ''}`,
+      municipio: prestadorMunNome,
+      uf: prestadorUf,
+      cep: prestadorCep,
+      email: prestadorEmail,
+      telefone: prestadorFone
+    };
+
+    // 4. Tomador de Serviços (Destinatário)
+    const tomadorNode =
+      this.findNode(xmlDoc, ['TomadorServico', 'Tomador', 'IdentificacaoTomador', 'DadosTomador', 'dest']) ||
+      xmlDoc;
+
+    const tomadorCnpjCpf =
+      this.findText(tomadorNode, ['Cnpj', 'CNPJ', 'Cpf', 'CPF', 'CpfCnpj', 'CNPJTomador']) ||
+      this.findText(xmlDoc, ['CPFCNPJTomador', 'CNPJTomador']) ||
+      '00000000000000';
+
+    const tomadorRazao =
+      this.findText(tomadorNode, ['RazaoSocial', 'xNome', 'RazaoSocialTomador', 'NomeTomador']) ||
+      this.findText(xmlDoc, ['RazaoSocialTomador']) ||
+      'TOMADOR DOS SERVIÇOS S/A';
+
+    const tomadorIm =
+      this.findText(tomadorNode, ['InscricaoMunicipal', 'InscricaoMunicipalTomador', 'IM']) ||
+      this.findText(xmlDoc, ['InscricaoMunicipalTomador']);
+
+    const tomadorMunNome =
+      this.findText(tomadorNode, ['xMun', 'Municipio', 'xMunicipio']) || prestadorMunNome;
+
+    const tomadorUf =
+      this.findText(tomadorNode, ['Uf', 'UF', 'uf']) || prestadorUf;
+
+    const tomadorLogradouro =
+      this.findText(tomadorNode, ['Endereco', 'xLgr', 'Logradouro']) || 'Endereço do Tomador';
+
+    const tomadorNum = this.findText(tomadorNode, ['Numero', 'nro']);
+    const tomadorBairro = this.findText(tomadorNode, ['Bairro', 'xBairro']);
+    const tomadorCep = this.findText(tomadorNode, ['Cep', 'CEP']);
+    const tomadorEmail = this.findText(tomadorNode, ['Email', 'xEmail']);
+
+    const destinatario: Participante = {
+      cnpjCpf: tomadorCnpjCpf,
+      razaoSocial: tomadorRazao,
+      inscricaoMunicipal: tomadorIm,
+      indicadorContribuinte: '1',
+      endereco: `${tomadorLogradouro}${tomadorNum ? ', ' + tomadorNum : ''}${tomadorBairro ? ' - ' + tomadorBairro : ''}`,
+      municipio: tomadorMunNome,
+      uf: tomadorUf,
+      cep: tomadorCep,
+      email: tomadorEmail
+    };
+
+    // 5. Extração de Valores e Tributos
+    const valoresNode =
+      this.findNode(xmlDoc, ['ValoresNfse', 'Valores', 'valores', 'Servico', 'tcDadosServico']) || xmlDoc;
+
+    const valorServicos =
+      this.findNumber(valoresNode, ['ValorServicos', 'vServ', 'ValorServico', 'ValorNota', 'vProd', 'ValorTotalServicos']) ||
+      this.findNumber(xmlDoc, ['ValorServicos', 'vServ', 'ValorServico', 'ValorNota']);
+
+    const valorDeducoes = this.findNumber(valoresNode, ['ValorDeducoes', 'vDed', 'Deducoes']);
+    const descontoIncondicionado = this.findNumber(valoresNode, ['DescontoIncondicionado', 'vDescIncond', 'ValorDesconto']);
+    const descontoCondicionado = this.findNumber(valoresNode, ['DescontoCondicionado', 'vDescCond']);
+
+    let baseCalculoIss = this.findNumber(valoresNode, ['BaseCalculo', 'vBC', 'ValorBaseCalculo']);
+    if (baseCalculoIss <= 0 && valorServicos > 0) {
+      baseCalculoIss = Math.max(0, valorServicos - valorDeducoes - descontoIncondicionado);
+    }
+
+    let aliquotaIss = this.findNumber(valoresNode, ['Aliquota', 'pAliq', 'AliquotaServicos', 'AliquotaISS', 'pISS']);
+    // Normalização da alíquota (ex: 0.05 -> 5.00)
+    if (aliquotaIss > 0 && aliquotaIss < 0.20) {
+      aliquotaIss = Number((aliquotaIss * 100).toFixed(2));
+    }
+
+    let valorIss = this.findNumber(valoresNode, ['ValorIss', 'vISS', 'ValorISSRetido', 'ValorISS']);
+    if (valorIss <= 0 && baseCalculoIss > 0 && aliquotaIss > 0) {
+      valorIss = Number(((baseCalculoIss * aliquotaIss) / 100).toFixed(2));
+    }
+
+    const issRetidoRaw = this.findText(valoresNode, ['IssRetido', 'indIssRet', 'ISSRetido']).toUpperCase();
+    const issRetido =
+      issRetidoRaw === '1' ||
+      issRetidoRaw === 'S' ||
+      issRetidoRaw === 'SIM' ||
+      issRetidoRaw === 'TRUE';
+
+    const respRetencaoRaw = this.findText(valoresNode, ['ResponsavelRetencao', 'respRet']);
+    const responsavelRetencao =
+      respRetencaoRaw === '1'
+        ? 'TOMADOR'
+        : respRetencaoRaw === '2'
+        ? 'INTERMEDIARIO'
+        : issRetido
+        ? 'TOMADOR'
+        : 'PRESTADOR';
+
+    // Retenções Federais
+    const valorPis = this.findNumber(valoresNode, ['ValorPis', 'vPIS', 'ValorPIS']);
+    const valorCofins = this.findNumber(valoresNode, ['ValorCofins', 'vCOFINS', 'ValorCOFINS']);
+    const valorInss = this.findNumber(valoresNode, ['ValorInss', 'vINSS', 'ValorINSS']);
+    const valorIr = this.findNumber(valoresNode, ['ValorIr', 'ValorIrRetido', 'vIRRF', 'ValorIRRF', 'ValorIR']);
+    const valorCsll = this.findNumber(valoresNode, ['ValorCsll', 'vCSLL', 'ValorCSLL']);
+    const outrasRetencoes = this.findNumber(valoresNode, ['OutrasRetencoes', 'vOutrasRet']);
+
+    let valorLiquido = this.findNumber(valoresNode, ['ValorLiquidoNfse', 'vLiq', 'ValorLiquido']);
+    if (valorLiquido <= 0 && valorServicos > 0) {
+      const retencoesTotais =
+        (issRetido ? valorIss : 0) +
+        valorPis +
+        valorCofins +
+        valorInss +
+        valorIr +
+        valorCsll +
+        outrasRetencoes;
+      valorLiquido = Math.max(0, valorServicos - retencoesTotais - descontoIncondicionado);
+    }
+
+    // 6. Dados Específicos do Serviço Municipal
+    const servicoNode =
+      this.findNode(xmlDoc, ['Servico', 'tcDadosServico', 'DeclaracaoPrestacaoServico', 'InfDeclaracaoPrestacaoServico', 'DPS']) ||
+      xmlDoc;
+
+    const itemListaServico = this.findText(servicoNode, [
+      'ItemListaServico',
+      'cTribNac',
+      'cServ',
+      'ItemServico',
+      'CodigoItemListaServico'
+    ]);
+
+    const descricaoItemLista = NfseService.obterDescricaoItemListaServico(itemListaServico);
+
+    const discriminacao =
+      this.findText(servicoNode, [
+        'Discriminacao',
+        'xDiscServ',
+        'xDescServ',
+        'DiscriminacaoServico',
+        'Descricao',
+        'discriminacao'
+      ]) || 'Prestação de serviços descrita na NFS-e';
+
+    const codigoCnae = this.findText(servicoNode, ['CodigoCnae', 'CNAE', 'cnae']);
+    const codigoTribMun = this.findText(servicoNode, ['CodigoTributacaoMunicipio', 'cTribMun', 'CodigoTributacao']);
+    const codigoMunPrestacao =
+      this.findText(servicoNode, ['MunicipioPrestacaoServico', 'cMun', 'CodigoMunicipio']) ||
+      prestadorMunIbge;
+
+    const prefeituraInfo = NfseService.identificarPrefeitura(prestadorMunIbge || codigoMunPrestacao, prestadorUf);
+
+    const naturezaCodigo = this.findText(xmlDoc, ['NaturezaOperacao', 'natOp', 'indNaturezaOperacao']);
+    const naturezaOperacao = NfseService.traduzirNaturezaOperacao(naturezaCodigo);
+
+    const optanteSimplesRaw = this.findText(xmlDoc, ['OptanteSimplesNacional', 'opSimpNac']);
+    const optanteSimplesNacional = optanteSimplesRaw === '1' || optanteSimplesRaw.toLowerCase() === 'true';
+
+    const regimeEspecialCodigo = this.findText(xmlDoc, ['RegimeEspecialTributacao', 'regEspTrib']);
+    const regimeEspecialTributacao = NfseService.traduzirRegimeEspecial(regimeEspecialCodigo);
+
+    // CFOP para Aquisição de Serviços por Empresa:
+    // 1933: Aquisição de serviço tributado pelo ISSQN dentro do estado
+    // 2933: Aquisição de serviço tributado pelo ISSQN interestadual
+    const isInterestadual = prestadorUf !== tomadorUf && prestadorUf !== 'BR' && tomadorUf !== 'BR';
+    const cfopServico = isInterestadual ? '2933' : '1933';
+
+    // Item de serviço
+    const itemServico: ItemDocumentoFiscal = {
+      numeroItem: 1,
+      codigoProduto: itemListaServico || 'SERV-01',
+      descricao: `${itemListaServico ? itemListaServico + ' - ' : ''}${discriminacao.substring(0, 180)}`,
+      ncm: '00000000', // Serviços não possuem NCM; preenchido com zeros para conformidade fiscal
+      cfop: cfopServico,
+      uCom: 'UN',
+      qCom: 1,
+      vUnCom: valorServicos,
+      vProd: valorServicos,
+      vFrete: 0,
+      vSeg: 0,
+      vDesc: descontoIncondicionado || 0,
+      vOutro: 0,
+      origem: '0',
+      unidadeComercial: 'UN',
+      quantidade: 1,
+      valorUnitario: valorServicos,
+      valorTotal: valorServicos,
+      valorDesconto: descontoIncondicionado || 0,
+      valorFrete: 0,
+      valorSeguro: 0,
+      valorOutrasDespesas: 0,
+      impostos: {
+        icmsCst: '41', // Não tributado pelo ICMS (incidência de ISSQN)
+        icmsBaseCalculo: 0,
+        icmsAliquota: 0,
+        icmsValor: 0,
+        icmsCalculado: 0,
+        icmsDiferenca: 0,
+        icmsCreditoAdmissivel: false,
+        icmsValorCredito: 0,
+        temSt: false,
+        icmsStBaseCalculo: 0,
+        icmsStAliquota: 0,
+        icmsStMva: 0,
+        icmsStValor: 0,
+        icmsStCalculado: 0,
+        icmsStDiferenca: 0,
+        aplicaDifal: false,
+        fcpAliquota: 0,
+        fcpValor: 0,
+        fcpCalculado: 0,
+        ipiCst: '53',
+        ipiBaseCalculo: 0,
+        ipiAliquota: 0,
+        ipiValor: 0,
+        ipiCalculado: 0,
+        ipiCreditoAdmissivel: false,
+        pisCst: '01',
+        pisBaseCalculo: valorServicos,
+        pisAliquota: valorPis > 0 && valorServicos > 0 ? Number(((valorPis / valorServicos) * 100).toFixed(2)) : 0.65,
+        pisValor: valorPis,
+        pisCalculado: valorPis,
+        pisCreditoAdmissivel: true,
+        cofinsCst: '01',
+        cofinsBaseCalculo: valorServicos,
+        cofinsAliquota: valorCofins > 0 && valorServicos > 0 ? Number(((valorCofins / valorServicos) * 100).toFixed(2)) : 3.00,
+        cofinsValor: valorCofins,
+        cofinsCalculado: valorCofins,
+        cofinsCreditoAdmissivel: true,
+        ibsCst: '01',
+        ibsBaseCalculo: valorServicos,
+        ibsAliquota: 0.10,
+        ibsValor: Number((valorServicos * 0.001).toFixed(2)),
+        ibsCalculado: Number((valorServicos * 0.001).toFixed(2)),
+        ibsDiferenca: 0,
+        ibsCreditoAdmissivel: true,
+        ibsValorCredito: Number((valorServicos * 0.001).toFixed(2)),
+        cbsCst: '01',
+        cbsBaseCalculo: valorServicos,
+        cbsAliquota: 0.90,
+        cbsValor: Number((valorServicos * 0.009).toFixed(2)),
+        cbsCalculado: Number((valorServicos * 0.009).toFixed(2)),
+        cbsDiferenca: 0,
+        cbsCreditoAdmissivel: true,
+        cbsValorCredito: Number((valorServicos * 0.009).toFixed(2)),
+        issAliquota: aliquotaIss,
+        issValor: valorIss,
+        issBaseCalculo: baseCalculoIss,
+        issRetido,
+        issCalculado: valorIss,
+        inssAliquota: valorInss > 0 && valorServicos > 0 ? Number(((valorInss / valorServicos) * 100).toFixed(2)) : 0,
+        inssValor: valorInss,
+        inssBaseCalculo: valorInss > 0 ? valorServicos : 0,
+        irAliquota: valorIr > 0 && valorServicos > 0 ? Number(((valorIr / valorServicos) * 100).toFixed(2)) : 0,
+        irValor: valorIr,
+        irBaseCalculo: valorIr > 0 ? valorServicos : 0,
+        csllAliquota: valorCsll > 0 && valorServicos > 0 ? Number(((valorCsll / valorServicos) * 100).toFixed(2)) : 0,
+        csllValor: valorCsll,
+        csllBaseCalculo: valorCsll > 0 ? valorServicos : 0
+      },
+      ocorrencias: [],
+      fundamentacoes: [],
+      statusAnalise: 'OK'
+    };
+
+    const dadosServicoNFSe: DadosServicoNFSe = {
+      itemListaServico,
+      descricaoItemListaServico: descricaoItemLista,
+      codigoTributacaoMunicipio: codigoTribMun,
+      discriminacaoServico: discriminacao,
+      codigoMunicipioPrestacao: codigoMunPrestacao,
+      municipioPrestacaoNome: prestadorMunNome,
+      ufPrestacao: prestadorUf,
+      codigoCnae,
+      issRetido,
+      responsavelRetencao,
+      aliquotaIss,
+      valorIss,
+      baseCalculoIss,
+      valorDeducoes,
+      descontoIncondicionado,
+      descontoCondicionado,
+      valorLiquido,
+      codigoVerificacao,
+      prefeituraEmissora: prefeituraInfo.nome,
+      codigoMunicipioIBGE: prestadorMunIbge || codigoMunPrestacao,
+      padraoLayout,
+      regimeEspecialTributacao,
+      optanteSimplesNacional,
+      exigibilidadeIss: '1',
+      competencia,
+      valorInss,
+      valorIr,
+      valorCsll,
+      outrasRetencoes
+    };
+
+    return {
+      id: `DOC-NFSE-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      tipoDocumento: 'NFSE',
+      chaveAcesso,
+      numero,
+      serie,
+      naturezaOperacao,
+      dataEmissao,
+      dataEntradaSaida: dataEmissao,
+      tipoOperacao: 'ENTRADA',
+      finalidade: '1',
+      versaoSchema: '1.00',
+      emitente,
+      destinatario,
+      itens: [itemServico],
+      valorProdutos: valorServicos,
+      valorFrete: 0,
+      valorSeguro: 0,
+      valorDesconto: (descontoIncondicionado || 0) + (descontoCondicionado || 0),
+      valorOutrasDespesas: 0,
+      valorTotalDocumento: valorServicos,
+      totalIcms: 0,
+      totalIcmsSt: 0,
+      totalIpi: 0,
+      totalPis: valorPis,
+      totalCofins: valorCofins,
+      totalIss: valorIss,
+      totalInss: valorInss,
+      totalIr: valorIr,
+      totalCsll: valorCsll,
+      outrasRetencoes,
+      totalIbs: Number((valorServicos * 0.001).toFixed(2)),
+      totalCbs: Number((valorServicos * 0.009).toFixed(2)),
+      totalCreditosIbsCbs: Number((valorServicos * 0.01).toFixed(2)),
+      totalCreditosApurados: 0,
+      totalDebitosApurados: 0,
+      totalDivergenciasValor: 0,
+      ocorrencias: [],
+      severidadeGeral: 'OK',
+      status: 'IMPORTADO',
+      dadosServicoNFSe,
+      rawXml: xmlContent
+    };
   }
 
   /**

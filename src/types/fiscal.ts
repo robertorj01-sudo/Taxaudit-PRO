@@ -169,6 +169,9 @@ export interface Participante {
   uf: string;
   municipio: string;
   inscricaoEstadual?: string;
+  inscricaoMunicipal?: string;
+  email?: string;
+  telefone?: string;
   regimeTributario?: RegimeTributario;
   indicadorContribuinte: '1' | '2' | '9'; // 1: Contribuinte ICMS, 2: Isento, 9: Não Contribuinte
   endereco?: string;
@@ -310,6 +313,18 @@ export interface ImpostoItem {
   csllAliquota?: number;
   csllValor?: number;
   csllBaseCalculo?: number;
+
+  // ISS (Imposto Sobre Serviços de Qualquer Natureza - NFS-e Municipal)
+  issAliquota?: number;
+  issValor?: number;
+  issBaseCalculo?: number;
+  issRetido?: boolean;
+  issCalculado?: number;
+
+  // INSS Retido na Fonte
+  inssAliquota?: number;
+  inssValor?: number;
+  inssBaseCalculo?: number;
 }
 
 export interface FundamentacaoAnalise {
@@ -477,6 +492,11 @@ export interface DocumentoFiscal {
   totalIpi: number;
   totalPis: number;
   totalCofins: number;
+  totalIss?: number;
+  totalInss?: number;
+  totalIr?: number;
+  totalCsll?: number;
+  outrasRetencoes?: number;
   totalFust?: number;
   totalFunttel?: number;
 
@@ -561,7 +581,55 @@ export interface DocumentoFiscal {
     direitoCreditoFrete?: boolean;
     tipoFrete?: 'FOB' | 'CIF';
   };
+  dadosServicoNFSe?: DadosServicoNFSe;
   manifestacaoDestinatario?: EventoManifestacaoDestinatario;
+}
+
+export type PadraoLayoutNFSe =
+  | 'ABRASF_V2'
+  | 'ABRASF_V1'
+  | 'PADRAO_NACIONAL'
+  | 'PAULISTANA'
+  | 'CARIOCA'
+  | 'DSF'
+  | 'GINFES'
+  | 'BETHA'
+  | 'IPM'
+  | 'OUTROS';
+
+export interface DadosServicoNFSe {
+  itemListaServico?: string;
+  descricaoItemListaServico?: string;
+  codigoTributacaoMunicipio?: string;
+  discriminacaoServico?: string;
+  codigoMunicipioPrestacao?: string;
+  municipioPrestacaoNome?: string;
+  ufPrestacao?: string;
+  codigoCnae?: string;
+  issRetido: boolean;
+  responsavelRetencao?: 'TOMADOR' | 'PRESTADOR' | 'INTERMEDIARIO';
+  aliquotaIss?: number;
+  valorIss?: number;
+  baseCalculoIss?: number;
+  valorDeducoes?: number;
+  descontoIncondicionado?: number;
+  descontoCondicionado?: number;
+  valorLiquido?: number;
+  codigoVerificacao?: string;
+  prefeituraEmissora?: string;
+  codigoMunicipioIBGE?: string;
+  padraoLayout?: PadraoLayoutNFSe;
+  regimeEspecialTributacao?: string;
+  optanteSimplesNacional?: boolean;
+  incentivadorCultural?: boolean;
+  exigibilidadeIss?: string;
+  competencia?: string;
+  numeroRps?: string;
+  serieRps?: string;
+  valorInss?: number;
+  valorIr?: number;
+  valorCsll?: number;
+  outrasRetencoes?: number;
 }
 
 export type TipoEventoManifesto =

@@ -41,7 +41,8 @@ import {
   TableProperties,
   Globe,
   Database,
-  Download
+  Download,
+  Landmark
 } from 'lucide-react';
 import { DanfeModal } from './DanfeModal';
 import { DocumentoEntradaVisualizarModal } from './DocumentoEntradaVisualizarModal';
@@ -49,6 +50,7 @@ import { NetworkFolderSyncModal } from './NetworkFolderSyncModal';
 import { Nf3eImportModal } from './Nf3eImportModal';
 import { NfcomImportModal } from './NfcomImportModal';
 import { CteImportModal } from './CteImportModal';
+import { NfseImportModal } from './NfseImportModal';
 import { DuplicateDetectorModal } from './DuplicateDetectorModal';
 import { ReceitaFederalValidatorModal } from './ReceitaFederalValidatorModal';
 import { SiscomexNcmModal } from './SiscomexNcmModal';
@@ -87,6 +89,7 @@ export const DocumentManagerView: React.FC<DocumentManagerViewProps> = ({
   const [showNf3eModal, setShowNf3eModal] = useState(false);
   const [showNfcomModal, setShowNfcomModal] = useState(false);
   const [showCteModal, setShowCteModal] = useState(false);
+  const [showNfseModal, setShowNfseModal] = useState(false);
   const [showRfbModal, setShowRfbModal] = useState(false);
   const [rfbInitialCnpj, setRfbInitialCnpj] = useState<string | undefined>(undefined);
   const [showSiscomexModal, setShowSiscomexModal] = useState(false);
@@ -387,6 +390,7 @@ export const DocumentManagerView: React.FC<DocumentManagerViewProps> = ({
   const docsFiltrados = documentos.filter(doc => {
     if (filtroStatus === 'APROVADOS') return doc.status === 'APROVADO' || doc.status === 'ESCRITURADO';
     if (filtroStatus === 'DIVERGENCIAS') return doc.status === 'COM_DIVERGENCIAS';
+    if (filtroStatus === 'NFSE') return doc.tipoDocumento === 'NFSE';
     if (filtroStatus === 'NF3E') return doc.tipoDocumento === 'NF3E';
     if (filtroStatus === 'NFCOM') return doc.tipoDocumento === 'NFCOM';
     if (filtroStatus === 'CTE') return doc.tipoDocumento === 'CTE';
@@ -533,6 +537,17 @@ export const DocumentManagerView: React.FC<DocumentManagerViewProps> = ({
             className="hidden"
           />
 
+          {/* BOTÃO IMPORTAR NFS-E PREFEITURAS */}
+          <button
+            id="btn-importar-nfse"
+            onClick={() => setShowNfseModal(true)}
+            className="px-3 py-2 text-xs font-bold rounded-lg bg-violet-700 hover:bg-violet-800 text-white transition flex items-center gap-1.5 shadow-sm border border-violet-500/40"
+            title="Importar e Ler XMLs de NFS-e emitidas pelas prefeituras do Brasil (Padrão Nacional, ABRASF, Paulistana, Carioca, etc.)"
+          >
+            <Landmark className="w-4 h-4 text-violet-300" />
+            <span>Importar NFS-e (Prefeituras)</span>
+          </button>
+
           <button
             id="btn-colar-xml"
             onClick={() => setShowXmlModal(true)}
@@ -676,6 +691,19 @@ export const DocumentManagerView: React.FC<DocumentManagerViewProps> = ({
               Braspress Modelo 57 (R$ 4.850) Frete FOB com Tomada de Crédito ICMS 12% e PIS/COFINS (9,25%).
             </p>
           </button>
+
+          <button
+            onClick={() => setShowNfseModal(true)}
+            className="p-3 bg-white hover:bg-violet-50/60 border border-slate-200 hover:border-violet-300 rounded-lg text-left transition group shadow-2xs"
+          >
+            <div className="text-xs font-bold text-slate-800 group-hover:text-violet-700 flex items-center gap-1">
+              <Landmark className="w-3.5 h-3.5 text-violet-600" />
+              Cenário 7: NFS-e Prefeituras do Brasil
+            </div>
+            <p className="text-[11px] text-slate-500 mt-1">
+              Padrão Nacional (RFB), ABRASF v2 (BH/Curitiba), Paulistana (SP) e Carioca (RJ) com ISSQN e retenções federais.
+            </p>
+          </button>
         </div>
       </div>
 
@@ -692,6 +720,17 @@ export const DocumentManagerView: React.FC<DocumentManagerViewProps> = ({
                 }`}
               >
                 Todos ({documentos.length})
+              </button>
+              <button
+                onClick={() => setFiltroStatus('NFSE')}
+                className={`px-3 py-1 rounded-md font-medium transition flex items-center gap-1 ${
+                  filtroStatus === 'NFSE'
+                    ? 'bg-violet-700 text-white'
+                    : 'bg-violet-50 text-violet-800 hover:bg-violet-100'
+                }`}
+              >
+                <Landmark className="w-3 h-3" />
+                NFS-e Serviços ({documentos.filter(d => d.tipoDocumento === 'NFSE').length})
               </button>
               <button
                 onClick={() => setFiltroStatus('CTE')}
@@ -780,7 +819,9 @@ export const DocumentManagerView: React.FC<DocumentManagerViewProps> = ({
                           className="font-bold text-slate-900 hover:text-blue-700 font-mono text-left transition hover:underline flex items-center gap-1"
                           title="Clique para visualizar o Documento de Entrada completo com cabeçalho e itens"
                         >
-                          {doc.tipoDocumento === 'CTE'
+                          {doc.tipoDocumento === 'NFSE'
+                            ? `NFS-e ${doc.numero}`
+                            : doc.tipoDocumento === 'CTE'
                             ? `CT-e ${doc.numero}`
                             : doc.tipoDocumento === 'NFCOM'
                             ? `NFCom ${doc.numero}`
@@ -788,6 +829,12 @@ export const DocumentManagerView: React.FC<DocumentManagerViewProps> = ({
                             ? `NF3e ${doc.numero}`
                             : `NF-e ${doc.numero}`}
                         </button>
+                        {doc.tipoDocumento === 'NFSE' && (
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-violet-100 text-violet-900 border border-violet-300 flex items-center gap-0.5">
+                            <Landmark className="w-2.5 h-2.5 text-violet-700" />
+                            <span>{doc.dadosServicoNFSe?.padraoLayout || 'NFS-E'}</span>
+                          </span>
+                        )}
                         {doc.tipoDocumento === 'CTE' && (
                           <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-indigo-100 text-indigo-900 border border-indigo-300 flex items-center gap-0.5">
                             <Truck className="w-2.5 h-2.5 text-indigo-700" />
@@ -813,6 +860,11 @@ export const DocumentManagerView: React.FC<DocumentManagerViewProps> = ({
                         <span className="inline-block px-1.5 py-0.2 rounded text-[9px] font-semibold uppercase bg-slate-100 text-slate-600">
                           {doc.tipoOperacao} • SÉRIE {doc.serie}
                         </span>
+                        {doc.dadosServicoNFSe && (
+                          <span className="inline-block px-1.5 py-0.2 rounded text-[9px] font-semibold bg-violet-50 text-violet-800 border border-violet-200">
+                            {doc.dadosServicoNFSe.prefeituraEmissora || 'Prefeitura'} • LC 116: {doc.dadosServicoNFSe.itemListaServico || 'Serviço'}
+                          </span>
+                        )}
                         {doc.dadosTransporteCTe && (
                           <span className="inline-block px-1.5 py-0.2 rounded text-[9px] font-semibold bg-indigo-50 text-indigo-800 border border-indigo-200">
                             {doc.dadosTransporteCTe.municipioInicio}/{doc.dadosTransporteCTe.ufInicio} ➔ {doc.dadosTransporteCTe.municipioFim}/{doc.dadosTransporteCTe.ufFim} ({doc.dadosTransporteCTe.tipoFrete || 'FOB'})
@@ -846,13 +898,26 @@ export const DocumentManagerView: React.FC<DocumentManagerViewProps> = ({
                     </td>
                     <td className="py-3 px-4">
                       <div className="space-y-0.5 text-[11px] font-mono text-slate-600">
-                        <div>ICMS: <span className="font-medium text-slate-800">{formatMoeda(doc.totalIcms)}</span></div>
-                        <div>IPI: <span className="font-medium text-slate-800">{formatMoeda(doc.totalIpi)}</span></div>
-                        <div>PIS/COF: <span className="font-medium text-slate-800">{formatMoeda(doc.totalPis + doc.totalCofins)}</span></div>
-                        <div className="text-emerald-700 font-medium flex items-center gap-1">
-                          <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-100 font-bold">LC 214</span>
-                          <span>IBS/CBS: {formatMoeda((doc.totalIbs || 0) + (doc.totalCbs || 0))}</span>
-                        </div>
+                        {doc.tipoDocumento === 'NFSE' ? (
+                          <>
+                            <div>ISS ({(doc.dadosServicoNFSe?.aliquotaIss || 0).toFixed(2)}%): <span className="font-medium text-slate-800">{formatMoeda(doc.totalIss)}</span></div>
+                            <div>ISS Retido: <span className="font-medium text-slate-800">{doc.dadosServicoNFSe?.issRetido ? 'SIM' : 'NÃO'}</span></div>
+                            <div>PIS/COF: <span className="font-medium text-slate-800">{formatMoeda(doc.totalPis + doc.totalCofins)}</span></div>
+                            <div className="text-violet-700 font-medium">
+                              Ret. Federais: {formatMoeda((doc.totalPis || 0) + (doc.totalCofins || 0) + (doc.totalInss || 0) + (doc.totalIr || 0) + (doc.totalCsll || 0))}
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div>ICMS: <span className="font-medium text-slate-800">{formatMoeda(doc.totalIcms)}</span></div>
+                            <div>IPI: <span className="font-medium text-slate-800">{formatMoeda(doc.totalIpi)}</span></div>
+                            <div>PIS/COF: <span className="font-medium text-slate-800">{formatMoeda(doc.totalPis + doc.totalCofins)}</span></div>
+                            <div className="text-emerald-700 font-medium flex items-center gap-1">
+                              <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-100 font-bold">LC 214</span>
+                              <span>IBS/CBS: {formatMoeda((doc.totalIbs || 0) + (doc.totalCbs || 0))}</span>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </td>
                     <td className="py-3 px-4">
@@ -886,7 +951,7 @@ export const DocumentManagerView: React.FC<DocumentManagerViewProps> = ({
                         </button>
 
                         <button
-                          title="Imprimir DANFE / DACTE / Salvar em PDF"
+                          title="Imprimir DANFE / DACTE / DANFSE / Salvar em PDF"
                           onClick={() => {
                             if (onPrintDanfe) {
                               onPrintDanfe(doc);
@@ -903,6 +968,8 @@ export const DocumentManagerView: React.FC<DocumentManagerViewProps> = ({
                             ? 'DANFECOM'
                             : doc.tipoDocumento === 'NF3E'
                             ? 'DANF3E'
+                            : doc.tipoDocumento === 'NFSE'
+                            ? 'DANFSE'
                             : 'DANFE'}
                         </button>
 
@@ -1184,6 +1251,24 @@ export const DocumentManagerView: React.FC<DocumentManagerViewProps> = ({
           documentosExistentes={documentos}
           onClose={() => setShowNf3eModal(false)}
           onImportarDocumento={(doc) => handleImportarNf3e(doc)}
+        />
+      )}
+
+      {/* Modal de Importação de NFS-e Municipal (Prefeituras do Brasil) */}
+      {showNfseModal && (
+        <NfseImportModal
+          empresa={empresa}
+          documentosExistentes={documentos}
+          onClose={() => setShowNfseModal(false)}
+          onImportarDocumento={(doc) => {
+            setDocumentos(prev => [doc, ...prev.filter(d => d.id !== doc.id && d.chaveAcesso !== doc.chaveAcesso)]);
+            onAddAuditLog(
+              'IMPORTACAO',
+              doc.id,
+              doc.chaveAcesso,
+              `Importação de NFS-e Nº ${doc.numero} (${doc.dadosServicoNFSe?.prefeituraEmissora || 'Prefeitura Municipal'}) com classificação de aquisição de serviço.`
+            );
+          }}
         />
       )}
 

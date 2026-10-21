@@ -1,6 +1,7 @@
 import { Empresa, DocumentoFiscal, UsuarioApp, CertificadoDigitalInfo, LicencaComercial } from '../types/fiscal';
 import { TaxRuleEngine } from './taxRuleEngine';
 import { XmlFiscalParser } from './xmlParser';
+import { SAMPLE_XML_NFSE_PADRAO_NACIONAL } from './nfseService';
 
 export const EMPRESA_PADRAO: Empresa = {
   id: 'EMP-001',
@@ -1339,6 +1340,12 @@ export function gerarExemploFornecedorInapto(): DocumentoFiscal {
   return auditado.documentoAtualizado;
 }
 
+export function gerarExemploNfseMunicipal(): DocumentoFiscal {
+  const doc = XmlFiscalParser.parseNFeXml(SAMPLE_XML_NFSE_PADRAO_NACIONAL);
+  const auditado = TaxRuleEngine.analisarDocumento(doc, EMPRESA_PADRAO);
+  return auditado.documentoAtualizado;
+}
+
 // Inicializa documentos de demonstração com auditoria pré-processada pelo motor
 export function getDocumentosIniciais(): DocumentoFiscal[] {
   const doc1 = XmlFiscalParser.parseNFeXml(SAMPLE_XML_INTERESTADUAL_DIVERGENTE);
@@ -1352,6 +1359,7 @@ export function getDocumentosIniciais(): DocumentoFiscal[] {
   const res3 = TaxRuleEngine.analisarDocumento(doc3, EMPRESA_PADRAO);
   const res4 = TaxRuleEngine.analisarDocumento(doc4, EMPRESA_PADRAO);
   const res5 = TaxRuleEngine.analisarDocumento(doc5, EMPRESA_PADRAO);
+  const docNfse = gerarExemploNfseMunicipal();
   const docNf3e = gerarExemploNf3eEnergia();
   const docNfcom = gerarExemploNfcomTelecom();
   const docCte = gerarExemploCteTransporte();
@@ -1359,6 +1367,7 @@ export function getDocumentosIniciais(): DocumentoFiscal[] {
 
   return [
     docInapto,                // NF-e com Alerta Crítico: Fornecedor CNPJ INAPTO na Receita Federal (Art. 82 Lei 9.430/96)
+    docNfse,                  // NFS-e Municipal Padrão Nacional / Prefeituras (LC 116/2003 e ISSQN)
     res4.documentoAtualizado, // Setembro/2026
     res5.documentoAtualizado, // Agosto/2026
     docCte,                   // CT-e Transporte Rodoviário de Insumos (Modelo 57)

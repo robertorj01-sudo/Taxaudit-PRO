@@ -96,6 +96,8 @@ export const DanfeModal: React.FC<DanfeModalProps> = ({ documento, onClose }) =>
                 ? 'DANFECOM'
                 : documento.tipoDocumento === 'NF3E'
                 ? 'DANF3E'
+                : documento.tipoDocumento === 'NFSE'
+                ? 'DANFSE'
                 : 'DANFE'}
             </div>
             <div className="text-[9px] leading-tight font-semibold">
@@ -105,6 +107,8 @@ export const DanfeModal: React.FC<DanfeModalProps> = ({ documento, onClose }) =>
                 ? 'DOC. AUXILIAR DA NOTA FISCAL FATURA ELETRÔNICA DE SERVIÇOS DE COMUNICAÇÃO'
                 : documento.tipoDocumento === 'NF3E'
                 ? 'DOC. AUXILIAR DA NOTA FISCAL DE ENERGIA ELÉTRICA ELETRÔNICA'
+                : documento.tipoDocumento === 'NFSE'
+                ? 'DOCUMENTO AUXILIAR DA NOTA FISCAL DE SERVIÇOS ELETRÔNICA'
                 : 'DOCUMENTO AUXILIAR DA NOTA FISCAL ELETRÔNICA'}
             </div>
             <div className="my-1 text-left inline-block mx-auto text-[10px] font-mono border border-black p-1">
@@ -121,6 +125,8 @@ export const DanfeModal: React.FC<DanfeModalProps> = ({ documento, onClose }) =>
                   ? 'MOD. 62'
                   : documento.tipoDocumento === 'NF3E'
                   ? 'MOD. 66'
+                  : documento.tipoDocumento === 'NFSE'
+                  ? 'NFS-e MUNICIPAL'
                   : 'FOLHA 1/1'}
               </div>
             </div>
@@ -144,7 +150,7 @@ export const DanfeModal: React.FC<DanfeModalProps> = ({ documento, onClose }) =>
               </svg>
             </div>
             <div className="text-center font-mono font-bold text-[10px] tracking-widest border-t border-black pt-1">
-              CHAVE DE ACESSO
+              {documento.tipoDocumento === 'NFSE' ? 'CHAVE / CÓDIGO DA NFS-E' : 'CHAVE DE ACESSO'}
               <div className="text-[9px] tracking-normal mt-0.5">{chaveFormatada}</div>
             </div>
             <div className="text-[9px] text-center border-t border-black pt-1">
@@ -162,6 +168,13 @@ export const DanfeModal: React.FC<DanfeModalProps> = ({ documento, onClose }) =>
                 <>
                   Consulta de autenticidade no Portal da NF3e (SVRS) <br />
                   <span className="font-mono text-[8px] font-semibold text-blue-700">dfe-portal.svrs.rs.gov.br/Nf3e</span>
+                </>
+              ) : documento.tipoDocumento === 'NFSE' ? (
+                <>
+                  Consulta de autenticidade na Prefeitura / NFS-e Nacional <br />
+                  <span className="font-mono text-[8px] font-semibold text-violet-700">
+                    {documento.dadosServicoNFSe?.prefeituraEmissora || 'Prefeitura Municipal'} • Cód: {documento.dadosServicoNFSe?.codigoVerificacao || 'VALIDADA'}
+                  </span>
                 </>
               ) : (
                 <>
@@ -344,6 +357,65 @@ export const DanfeModal: React.FC<DanfeModalProps> = ({ documento, onClose }) =>
                 </span>
                 <span className="font-bold text-blue-800 bg-blue-100 px-2 py-0.5 rounded border border-blue-300">
                   PIS/COFINS (9,25%): R$ {formatMoeda(documento.totalPis + documento.totalCofins)}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Quadro Específico de NFS-e Municipal (Prefeituras do Brasil) */}
+        {(documento.tipoDocumento === 'NFSE' || documento.dadosServicoNFSe) && (
+          <div className="border-2 border-violet-700 bg-violet-50/40 p-2.5 mb-2 rounded text-[9px]">
+            <div className="font-bold text-[10px] text-violet-950 uppercase flex items-center justify-between border-b border-violet-300 pb-1 mb-1.5">
+              <span>DADOS DA PREFEITURA &amp; PRESTAÇÃO DE SERVIÇOS • DANFSE MUNICIPAL</span>
+              <span className="px-1.5 py-0.5 bg-violet-200 text-violet-950 font-mono text-[8.5px] rounded font-bold">
+                {documento.dadosServicoNFSe?.prefeituraEmissora || 'PREFEITURA MUNICIPAL'} • {documento.dadosServicoNFSe?.padraoLayout || 'ABRASF'}
+              </span>
+            </div>
+            <div className="grid grid-cols-4 gap-2 font-mono">
+              <div>
+                <span className="text-slate-500 font-sans block text-[8px]">ITEM LC 116/2003</span>
+                <span className="font-bold text-slate-900">{documento.dadosServicoNFSe?.itemListaServico || '01.01'}</span>
+              </div>
+              <div>
+                <span className="text-slate-500 font-sans block text-[8px]">CÓDIGO VERIFICAÇÃO / AUTENTICIDADE</span>
+                <span className="font-bold text-slate-900">{documento.dadosServicoNFSe?.codigoVerificacao || 'AUT-VERIF-9921'}</span>
+              </div>
+              <div>
+                <span className="text-slate-500 font-sans block text-[8px]">LOCAL DA PRESTAÇÃO (IBGE)</span>
+                <span className="font-bold text-slate-900">
+                  {documento.dadosServicoNFSe?.municipioPrestacaoNome || documento.emitente.municipio} - {documento.dadosServicoNFSe?.ufPrestacao || documento.emitente.uf}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-500 font-sans block text-[8px]">REGIME ESPECIAL / SIMPLES</span>
+                <span className="font-bold text-slate-900">
+                  {documento.dadosServicoNFSe?.optanteSimplesNacional ? 'Optante Simples Nacional' : 'Tributação Normal'}
+                </span>
+              </div>
+            </div>
+
+            {/* Descrição do Serviço da LC 116 e Discriminação */}
+            <div className="mt-1.5 pt-1.5 border-t border-violet-200">
+              <div className="text-[8.5px] font-sans text-violet-950 font-semibold mb-0.5">
+                Descrição do Serviço LC 116: {documento.dadosServicoNFSe?.descricaoItemListaServico}
+              </div>
+              <div className="text-[8px] font-mono text-slate-700 bg-white/70 p-1.5 rounded border border-violet-200 whitespace-pre-wrap">
+                {documento.dadosServicoNFSe?.discriminacaoServico}
+              </div>
+            </div>
+
+            {/* Quadro de ISS e Retenções */}
+            <div className="mt-1.5 pt-1.5 border-t border-violet-200/80 flex items-center justify-between text-[8.5px] font-sans">
+              <span className="text-violet-950">
+                <strong>Enquadramento ISSQN:</strong> Alíquota de {(documento.dadosServicoNFSe?.aliquotaIss || 0).toFixed(2)}% • Base de Cálculo: R$ {formatMoeda(documento.dadosServicoNFSe?.baseCalculoIss || documento.valorTotalDocumento)} • ISS Retido: <strong>{documento.dadosServicoNFSe?.issRetido ? 'SIM (Responsável Tomador)' : 'NÃO (Devido pelo Prestador)'}</strong>
+              </span>
+              <div className="flex gap-1.5 font-mono">
+                <span className="font-bold text-violet-800 bg-violet-100 px-2 py-0.5 rounded border border-violet-300">
+                  ISSQN: R$ {formatMoeda(documento.totalIss)}
+                </span>
+                <span className="font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
+                  Ret. Federais: R$ {formatMoeda((documento.totalPis || 0) + (documento.totalCofins || 0) + (documento.totalInss || 0) + (documento.totalIr || 0) + (documento.totalCsll || 0))}
                 </span>
               </div>
             </div>

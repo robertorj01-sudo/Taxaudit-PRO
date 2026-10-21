@@ -78,6 +78,7 @@ export const DocumentoEntradaVisualizarModal: React.FC<DocumentoEntradaVisualiza
     if (documento.tipoDocumento === 'CTE') return '57';
     if (documento.tipoDocumento === 'NFCOM') return '62';
     if (documento.tipoDocumento === 'NF3E') return '66';
+    if (documento.tipoDocumento === 'NFSE') return 'NFS-e';
     if (documento.tipoDocumento === 'NFCE') return '65';
     return '55';
   })();
